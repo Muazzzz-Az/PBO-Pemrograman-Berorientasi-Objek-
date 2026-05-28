@@ -8,8 +8,10 @@ import ArtistList from './components/ArtistList';
 import ArtistDetail from './components/ArtistDetail';
 import LoginForm from './components/LoginForm';
 import RegisterForm from './components/RegisterForm';
+// IMPORT BARU: Mengimpor form pendaftaran seniman yang menerapkan struktur PBO
+import ArtistRegisterForm from './components/ArtistRegisterForm';
 
-// PENGUBAHAN: Menjadi Tema Pastel Biru Muda - Mint - Krem (Unik & Bebas Plagiat)
+// Tema Pastel Biru Muda - Mint - Krem (Unik & Bebas Plagiat)
 const pastelOceanTheme = createTheme({
   palette: {
     mode: 'light',
@@ -19,7 +21,7 @@ const pastelOceanTheme = createTheme({
       dark: '#1A6B8A',     // Biru samudera tua untuk teks kontras
     },
     secondary: {
-      main: '#87D37C',     // Hijau mint lembut pengganti lime neon VGen
+      main: '#87D37C',     // Hijau mint lembut
       light: '#E6F5E5',    // Soft mint background
     },
     background: {
@@ -27,7 +29,7 @@ const pastelOceanTheme = createTheme({
       paper: '#FFFFFF',     // Background card putih bersih
     },
     text: {
-      primary: '#1C2833',   // Abu-abu gelap (bukan hitam pekat) agar nyaman dibaca
+      primary: '#1C2833',   // Abu-abu gelap agar nyaman dibaca
       secondary: '#5D6D7E', // Abu-abu sekunder untuk sub-judul
     }
   },
@@ -37,7 +39,7 @@ const pastelOceanTheme = createTheme({
     h2: { fontWeight: 700, letterSpacing: '-0.01em', color: '#1A6B8A' },
     h3: { fontWeight: 700, color: '#1A6B8A' },
   },
-  shape: { borderRadius: 20 }, // Sudut melengkung halus khas pastel
+  shape: { borderRadius: 20 },
   components: {
     MuiButton: {
       styleOverrides: {
@@ -58,7 +60,7 @@ const pastelOceanTheme = createTheme({
         root: {
           borderRadius: '24px',
           backgroundColor: '#FFFFFF',
-          border: '1px solid rgba(74, 159, 191, 0.12)', // Border biru transparan super tipis
+          border: '1px solid rgba(74, 159, 191, 0.12)',
           boxShadow: '0 10px 30px rgba(74, 159, 191, 0.04)',
         },
       },
@@ -90,6 +92,9 @@ function App() {
           <Route path="/artists/:id" element={<ArtistDetail />} />
           <Route path="/login" element={<LoginForm setIsAuthenticated={setIsAuthenticated} setUser={setUser} />} />
           <Route path="/register" element={<RegisterForm />} />
+
+          {/* RUTE BARU: Mengarahkan tombol "I'm an artist+" ke halaman registrasi & seleksi khusus seniman */}
+          <Route path="/for-artists" element={<ArtistRegisterForm />} />
         </Routes>
       </BrowserRouter>
     </ThemeProvider>
