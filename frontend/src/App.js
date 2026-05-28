@@ -9,7 +9,7 @@ import ArtistDetail from './components/ArtistDetail';
 import LoginForm from './components/LoginForm';
 import RegisterForm from './components/RegisterForm';
 import ProfilePage from './components/ProfilePage';
-// IMPORT BARU: Mengimpor form pendaftaran seniman yang menerapkan struktur PBO
+import CommissionList from './components/CommissionList';
 import ArtistRegisterForm from './components/ArtistRegisterForm';
 
 // admin package imports
@@ -125,6 +125,7 @@ function App() {
         <Routes>
           <Route path="/" element={<HomePage />} />
           <Route path="/artists" element={<ArtistList />} />
+          <Route path="/commissions" element={<CommissionList />} />
           <Route path="/artists/:id" element={<ArtistDetail />} />
           <Route path="/login" element={<LoginForm setIsAuthenticated={setIsAuthenticated} setUser={setUser} />} />
           <Route path="/register" element={<RegisterForm />} />
