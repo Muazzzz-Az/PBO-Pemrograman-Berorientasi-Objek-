@@ -16,11 +16,15 @@ import {
   List,
   ListItem,
   ListItemText,
-  useTheme
+  useTheme,
+  Badge,
+  Divider,
+  Tooltip
 } from '@mui/material';
 import MenuIcon from '@mui/icons-material/Menu';
 import CloseIcon from '@mui/icons-material/Close';
-import AccountCircleIcon from '@mui/icons-material/AccountCircle'; // Icon untuk user yang belum login
+import AccountCircleIcon from '@mui/icons-material/AccountCircle';
+import NotificationsNoneIcon from '@mui/icons-material/NotificationsNone';
 import { styled } from '@mui/material/styles';
 
 const StyledAppBar = styled(AppBar)(({ theme }) => ({
@@ -84,6 +88,7 @@ function Navbar({ isAuthenticated, user, setIsAuthenticated, setUser }) {
     localStorage.removeItem('user');
     setIsAuthenticated(false);
     setUser(null);
+    setAnchorEl(null);
     navigate('/');
   };
 
@@ -97,8 +102,7 @@ function Navbar({ isAuthenticated, user, setIsAuthenticated, setUser }) {
 
   const menuItems = [
     { label: 'Commission', path: '/artists' },
-    { label: 'Shop', path: '/shop' },
-    { label: 'Challenge', path: '/challenge' },
+    { label: 'Shop', path: '/shop' }
   ];
 
   return (
@@ -106,7 +110,7 @@ function Navbar({ isAuthenticated, user, setIsAuthenticated, setUser }) {
       <Container maxWidth="xl">
         <Toolbar sx={{ justifyContent: 'space-between', py: 0.8, px: { xs: 0, md: 1 } }}>
 
-          {/* Sisi Kiri: Logo & Navigasi Utama */}
+          {/* Sisi Kiri: Logo Tetap Direct Ke Beranda */}
           <Box sx={{ display: 'flex', alignItems: 'center', gap: 3 }}>
             <LogoContainer onClick={() => navigate('/')}>
               <LogoText variant="h6">
@@ -125,67 +129,104 @@ function Navbar({ isAuthenticated, user, setIsAuthenticated, setUser }) {
             )}
           </Box>
 
-          {/* Sisi Kanan: Actions Menjadi Bersih & Ringkas */}
+          {/* Sisi Kanan: Actions */}
           {!isMobile ? (
             <Box sx={{ display: 'flex', gap: 2, alignItems: 'center' }}>
 
-              {/* Tombol Khusus untuk Mengajak Seniman Bergabung */}
+              {/* Lonceng BARU: Hanya muncul di kiri "I'm an artist+" jika SUDAH login */}
+              {isAuthenticated && (
+                <Tooltip title="Pemberitahuan">
+                  <IconButton sx={{ color: '#5D6D7E', p: 1, '&:hover': { bgcolor: '#F2F7F9', color: '#4A9FBF' } }}>
+                    <Badge color="error" variant="dot" overlap="circular">
+                      <NotificationsNoneIcon sx={{ width: 24, height: 24 }} />
+                    </Badge>
+                  </IconButton>
+                </Tooltip>
+              )}
+
+              {/* Tombol Artist */}
               <ArtistButton component={Link} to="/for-artists">
                 I'm an artist+
               </ArtistButton>
 
-              {!isAuthenticated ? (
-                /* JIKA BELUM LOGIN: Hanya tampil satu Icon Logo di Pojok */
-                <IconButton
-                  onClick={() => navigate('/login')}
-                  sx={{ color: '#4A9FBF', p: 0.5, border: '1px solid rgba(74, 159, 191, 0.2)', '&:hover': { bgcolor: '#F2F7F9' } }}
-                >
-                  <AccountCircleIcon sx={{ width: 32, height: 32 }} />
-                </IconButton>
-              ) : (
-                /* JIKA SUDAH LOGIN: Tampilkan Avatar Inisial Nama */
-                <>
+              {/* Bagian Dinamis Tombol Profile / Dropdown */}
+              <Box>
+                {!isAuthenticated ? (
+                  <IconButton
+                    onClick={handleMenuOpen}
+                    sx={{ color: '#4A9FBF', p: 0.5, border: '1px solid rgba(74, 159, 191, 0.2)', '&:hover': { bgcolor: '#F2F7F9' } }}
+                  >
+                    <AccountCircleIcon sx={{ width: 32, height: 32 }} />
+                  </IconButton>
+                ) : (
+                  /* SUDAH LOGIN: Tampilkan Avatar Inisial */
                   <IconButton onClick={handleMenuOpen} sx={{ p: 0.5, border: '1px solid rgba(74, 159, 191, 0.2)' }}>
                     <Avatar sx={{ bgcolor: '#4A9FBF', color: '#FFFFFF', width: 32, height: 32, fontSize: '0.9rem', fontWeight: 'bold' }}>
                       {user?.fullName?.charAt(0) || user?.username?.charAt(0)}
                     </Avatar>
                   </IconButton>
-                  <Menu
-                    anchorEl={anchorEl}
-                    open={Boolean(anchorEl)}
-                    onClose={handleMenuClose}
-                    transformOrigin={{ horizontal: 'right', vertical: 'top' }}
-                    anchorOrigin={{ horizontal: 'right', vertical: 'bottom' }}
-                    PaperProps={{
-                      sx: {
-                        borderRadius: 4,
-                        mt: 1.5,
-                        minWidth: 180,
-                        bgcolor: '#FFFFFF',
-                        border: '1px solid rgba(74, 159, 191, 0.15)',
-                        boxShadow: '0 10px 30px rgba(0,0,0,0.05)'
-                      }
-                    }}
-                  >
-                    <MenuItem component={Link} to="/profile" onClick={handleMenuClose} sx={{ fontWeight: 500, '&:hover': { bgcolor: '#F2F7F9', color: '#4A9FBF' } }}>
-                      Profil Saya
-                    </MenuItem>
-                    <MenuItem component={Link} to="/my-commissions" onClick={handleMenuClose} sx={{ fontWeight: 500, '&:hover': { bgcolor: '#F2F7F9', color: '#4A9FBF' } }}>
-                      Komisi Saya
-                    </MenuItem>
-                    <MenuItem onClick={handleLogout} sx={{ fontWeight: 600, color: '#E74C3C', '&:hover': { bgcolor: '#FCE4EC' } }}>
-                      Keluar
-                    </MenuItem>
-                  </Menu>
-                </>
-              )}
+                )}
+
+                {/* Dropdown Menu yang Menyesuaikan Kondisi */}
+                <Menu
+                  anchorEl={anchorEl}
+                  open={Boolean(anchorEl)}
+                  onClose={handleMenuClose}
+                  transformOrigin={{ horizontal: 'right', vertical: 'top' }}
+                  anchorOrigin={{ horizontal: 'right', vertical: 'bottom' }}
+                  PaperProps={{
+                    sx: {
+                      borderRadius: 4,
+                      mt: 1.5,
+                      minWidth: 190,
+                      bgcolor: '#FFFFFF',
+                      border: '1px solid rgba(74, 159, 191, 0.15)',
+                      boxShadow: '0 10px 30px rgba(0,0,0,0.05)'
+                    }
+                  }}
+                >
+                  {isAuthenticated ? (
+                    /* Menu saat SUDAH Login */
+                    <Box>
+                      <MenuItem component={Link} to="/profile" onClick={handleMenuClose} sx={{ fontSize: '0.9rem', fontWeight: 500, '&:hover': { bgcolor: '#F2F7F9', color: '#4A9FBF' } }}>
+                        Profile
+                      </MenuItem>
+                      <MenuItem component={Link} to="/messages" onClick={handleMenuClose} sx={{ fontSize: '0.9rem', fontWeight: 500, '&:hover': { bgcolor: '#F2F7F9', color: '#4A9FBF' } }}>
+                        💬 Kotak Chat
+                      </MenuItem>
+                      <MenuItem component={Link} to="/cart" onClick={handleMenuClose} sx={{ fontSize: '0.9rem', fontWeight: 500, '&:hover': { bgcolor: '#F2F7F9', color: '#4A9FBF' } }}>
+                        🛍️ Keranjang Belanja
+                      </MenuItem>
+                      <MenuItem component={Link} to="/my-commissions" onClick={handleMenuClose} sx={{ fontSize: '0.9rem', fontWeight: 500, '&:hover': { bgcolor: '#F2F7F9', color: '#4A9FBF' } }}>
+                        🎨 Komisi Saya
+                      </MenuItem>
+                      <Divider />
+                      <MenuItem onClick={handleLogout} sx={{ fontSize: '0.9rem', fontWeight: 600, color: '#E74C3C', '&:hover': { bgcolor: '#FCE4EC' } }}>
+                        Log out
+                      </MenuItem>
+                    </Box>
+                  ) : (
+                    <Box>
+                      <MenuItem onClick={() => { navigate('/login'); handleMenuClose(); }} sx={{ fontSize: '0.9rem', fontWeight: 600, color: '#1A6B8A', '&:hover': { bgcolor: '#F2F7F9' } }}>
+                      Login
+                      </MenuItem>
+                      <MenuItem onClick={() => { navigate('/register'); handleMenuClose(); }} sx={{ fontSize: '0.9rem', fontWeight: 500, '&:hover': { bgcolor: '#F2F7F9' } }}>
+                       Sign Up
+                      </MenuItem>
+                    </Box>
+                  )}
+                </Menu>
+              </Box>
+
             </Box>
           ) : (
             /* Versi Mobile Menu */
             <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
-              {!isAuthenticated && (
-                <IconButton onClick={() => navigate('/login')} sx={{ color: '#4A9FBF' }}>
-                  <AccountCircleIcon sx={{ width: 28, height: 28 }} />
+              {isAuthenticated && (
+                <IconButton sx={{ color: '#5D6D7E' }}>
+                  <Badge color="error" variant="dot">
+                    <NotificationsNoneIcon />
+                  </Badge>
                 </IconButton>
               )}
               <IconButton onClick={() => setMobileOpen(true)} sx={{ color: '#1A6B8A' }}>
