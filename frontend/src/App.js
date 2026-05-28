@@ -9,43 +9,47 @@ import ArtistDetail from './components/ArtistDetail';
 import LoginForm from './components/LoginForm';
 import RegisterForm from './components/RegisterForm';
 
-const oceanCatTheme = createTheme({
+// PENGUBAHAN: Menjadi Tema Pastel Biru Muda - Mint - Krem (Unik & Bebas Plagiat)
+const pastelOceanTheme = createTheme({
   palette: {
+    mode: 'light',
     primary: {
-      main: '#1A6B8A',
-      light: '#4A9FBF',
-      dark: '#0B4A63',
+      main: '#4A9FBF',     // Biru pastel utama
+      light: '#A0D2EB',    // Biru langit muda
+      dark: '#1A6B8A',     // Biru samudera tua untuk teks kontras
     },
     secondary: {
-      main: '#F4A261',
-      light: '#FFB347',
-      dark: '#E76F51',
+      main: '#87D37C',     // Hijau mint lembut pengganti lime neon VGen
+      light: '#E6F5E5',    // Soft mint background
     },
     background: {
-      default: '#E8F4F8',
-      paper: '#FFFFFF',
+      default: '#F2F7F9',   // Background halaman biru pastel yang sangat bersih
+      paper: '#FFFFFF',     // Background card putih bersih
     },
-    cat: {
-      cream: '#FFF3E0',
-      orange: '#FFA500',
-      blue: '#2196F3'
+    text: {
+      primary: '#1C2833',   // Abu-abu gelap (bukan hitam pekat) agar nyaman dibaca
+      secondary: '#5D6D7E', // Abu-abu sekunder untuk sub-judul
     }
   },
   typography: {
-    fontFamily: '"Poppins", "Inter", "Plus Jakarta Sans", "Roboto", sans-serif',
-    h1: { fontWeight: 800, letterSpacing: '-0.02em' },
-    h2: { fontWeight: 700, letterSpacing: '-0.01em' },
-    h3: { fontWeight: 700 },
+    fontFamily: '"Plus Jakarta Sans", "Poppins", "Inter", sans-serif',
+    h1: { fontWeight: 800, letterSpacing: '-0.02em', color: '#1A6B8A' },
+    h2: { fontWeight: 700, letterSpacing: '-0.01em', color: '#1A6B8A' },
+    h3: { fontWeight: 700, color: '#1A6B8A' },
   },
-  shape: { borderRadius: 20 },
+  shape: { borderRadius: 20 }, // Sudut melengkung halus khas pastel
   components: {
     MuiButton: {
       styleOverrides: {
         root: {
-          borderRadius: '50px',
+          borderRadius: '40px',
           textTransform: 'none',
           fontWeight: 600,
-          padding: '10px 24px',
+          padding: '8px 22px',
+          boxShadow: 'none',
+          '&:hover': {
+            boxShadow: 'none',
+          },
         },
       },
     },
@@ -53,7 +57,9 @@ const oceanCatTheme = createTheme({
       styleOverrides: {
         root: {
           borderRadius: '24px',
-          boxShadow: '0 8px 32px rgba(26, 107, 138, 0.1)',
+          backgroundColor: '#FFFFFF',
+          border: '1px solid rgba(74, 159, 191, 0.12)', // Border biru transparan super tipis
+          boxShadow: '0 10px 30px rgba(74, 159, 191, 0.04)',
         },
       },
     },
@@ -74,7 +80,7 @@ function App() {
   }, []);
 
   return (
-    <ThemeProvider theme={oceanCatTheme}>
+    <ThemeProvider theme={pastelOceanTheme}>
       <CssBaseline />
       <BrowserRouter>
         <Navbar isAuthenticated={isAuthenticated} user={user} setIsAuthenticated={setIsAuthenticated} setUser={setUser} />
