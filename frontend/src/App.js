@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { BrowserRouter, Routes, Route } from 'react-router-dom';
+import { BrowserRouter as Router, Routes, Route, Navigate } from 'react-router-dom';
 import { ThemeProvider, createTheme } from '@mui/material/styles';
 import CssBaseline from '@mui/material/CssBaseline';
 import Navbar from './components/Navbar';
@@ -8,29 +8,34 @@ import ArtistList from './components/ArtistList';
 import ArtistDetail from './components/ArtistDetail';
 import LoginForm from './components/LoginForm';
 import RegisterForm from './components/RegisterForm';
+import ProfilePage from './components/ProfilePage';
 // IMPORT BARU: Mengimpor form pendaftaran seniman yang menerapkan struktur PBO
 import ArtistRegisterForm from './components/ArtistRegisterForm';
 
-// Tema Pastel Biru Muda - Mint - Krem (Unik & Bebas Plagiat)
+// admin package imports
+import AdminDashboard from './components/admin/AdminDashboard';
+import ProtectedRoute from './components/ProtectedRoute';
+
+
 const pastelOceanTheme = createTheme({
   palette: {
     mode: 'light',
     primary: {
-      main: '#4A9FBF',     // Biru pastel utama
-      light: '#A0D2EB',    // Biru langit muda
-      dark: '#1A6B8A',     // Biru samudera tua untuk teks kontras
+      main: '#4A9FBF',
+      light: '#A0D2EB',
+      dark: '#1A6B8A',
     },
     secondary: {
-      main: '#87D37C',     // Hijau mint lembut
-      light: '#E6F5E5',    // Soft mint background
+      main: '#87D37C',
+      light: '#E6F5E5',
     },
     background: {
-      default: '#F2F7F9',   // Background halaman biru pastel yang sangat bersih
-      paper: '#FFFFFF',     // Background card putih bersih
+      default: '#F2F7F9',
+      paper: '#FFFFFF',
     },
     text: {
-      primary: '#1C2833',   // Abu-abu gelap agar nyaman dibaca
-      secondary: '#5D6D7E', // Abu-abu sekunder untuk sub-judul
+      primary: '#1C2833',
+      secondary: '#5D6D7E',
     }
   },
   typography: {
@@ -69,23 +74,54 @@ const pastelOceanTheme = createTheme({
 });
 
 function App() {
-  const [isAuthenticated, setIsAuthenticated] = useState(false);
-  const [user, setUser] = useState(null);
+  // 1. CEK LOKASI DEVELOPMENT
+  const isLocalhost = window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1';
 
+  // 2. STATE AWAL: Jika di localhost, langsung bypass status login sebagai admin
+  const [isAuthenticated, setIsAuthenticated] = useState(isLocalhost ? true : false);
+  const [user, setUser] = useState(isLocalhost ? {
+    username: 'naiii',
+    fullName: 'Nailah Salmah',
+    role: 'admin',
+    bio: 'Suka coding web backend & suka main game horror hwhw. 🎨✨',
+    avatarUrl: '',
+    bannerUrl: ''
+  } : null);
+
+  // 3. JALUR PRODUKSI: Tetap membaca localStorage jika aplikasi sudah di-deploy/online
   useEffect(() => {
+    if (isLocalhost) return; // Lewati pengecekan jika masih di localhost
+
     const token = localStorage.getItem('token');
     const savedUser = localStorage.getItem('user');
+
     if (token && savedUser) {
       setIsAuthenticated(true);
-      setUser(JSON.parse(savedUser));
+      try {
+        let parsedUser = JSON.parse(savedUser);
+        setUser(parsedUser);
+      } catch (error) {
+        console.error("Error parsing user data from localStorage", error);
+      }
     }
-  }, []);
+  }, [isLocalhost]);
+
+  // Fungsi tambahan agar saat user edit profil, local storage ikut ter-update
+  const handleUpdateUser = (updatedUser) => {
+    setUser(updatedUser);
+    localStorage.setItem('user', JSON.stringify(updatedUser));
+  };
 
   return (
     <ThemeProvider theme={pastelOceanTheme}>
       <CssBaseline />
-      <BrowserRouter>
-        <Navbar isAuthenticated={isAuthenticated} user={user} setIsAuthenticated={setIsAuthenticated} setUser={setUser} />
+      <Router>
+        <Navbar
+          isAuthenticated={isAuthenticated}
+          user={user}
+          setIsAuthenticated={setIsAuthenticated}
+          setUser={setUser}
+        />
         <Routes>
           <Route path="/" element={<HomePage />} />
           <Route path="/artists" element={<ArtistList />} />
@@ -93,10 +129,34 @@ function App() {
           <Route path="/login" element={<LoginForm setIsAuthenticated={setIsAuthenticated} setUser={setUser} />} />
           <Route path="/register" element={<RegisterForm />} />
 
+          <Route
+            path="/profile"
+            element={
+              isAuthenticated ? (
+                <ProfilePage user={user} setUser={handleUpdateUser} />
+              ) : (
+                <Navigate to="/login" replace />
+              )
+            }
+          />
+
+          {/* SINKRONISASI: Mengunci rute dengan komponen ProtectedRoute */}
+          <Route
+            path="/admin"
+            element={
+              <ProtectedRoute user={user}>
+                <AdminDashboard />
+              </ProtectedRoute>
+            }
+          />
+
           {/* RUTE BARU: Mengarahkan tombol "I'm an artist+" ke halaman registrasi & seleksi khusus seniman */}
           <Route path="/for-artists" element={<ArtistRegisterForm />} />
+
+          {/* CATCH-ALL ROUTE: Jika ngetik asal, lariin ke Home */}
+          <Route path="*" element={<Navigate to="/" replace />} />
         </Routes>
-      </BrowserRouter>
+      </Router>
     </ThemeProvider>
   );
 }
