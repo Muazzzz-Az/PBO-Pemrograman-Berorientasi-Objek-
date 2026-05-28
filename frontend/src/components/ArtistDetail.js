@@ -1,16 +1,8 @@
 import React, { useState, useEffect } from 'react';
 import { useParams, Link } from 'react-router-dom';
 import {
-    Box,
-    Container,
-    Grid,
-    Card,
-    CardContent,
-    Typography,
-    Avatar,
-    Chip,
-    Button,
-    IconButton
+    Box, Container, Grid, Card, CardContent, Typography, Avatar, Chip, Button, IconButton,
+    Dialog, DialogTitle, DialogContent, DialogActions, TextField, MenuItem // <-- Ini tambahan baris ini
 } from '@mui/material';
 import InstagramIcon from '@mui/icons-material/Instagram';
 import YouTubeIcon from '@mui/icons-material/YouTube';
@@ -25,6 +17,45 @@ function ArtistDetail() {
     const [artist, setArtist] = useState(null);
     const [artworks, setArtworks] = useState([]);
     const [loading, setLoading] = useState(true);
+
+    // === TAMBAHAN LOGIKA KOMISI ===
+    const [openModal, setOpenModal] = useState(false);
+    const [commissionData, setCommissionData] = useState({
+        title: '',
+        category: '',
+        price: '',
+        description: '',
+        imageUrl: '' // Opsional
+    });
+
+    const handleOpenModal = () => setOpenModal(true);
+    const handleCloseModal = () => setOpenModal(false);
+
+    const handleCommissionSubmit = async () => {
+        try {
+            const response = await fetch('http://localhost:8080/api/commissions', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({
+                    title: commissionData.title,
+                    category: commissionData.category,
+                    price: parseFloat(commissionData.price),
+                    description: commissionData.description,
+                    imageUrl: commissionData.imageUrl
+                })
+            });
+
+            if (response.ok) {
+                alert("Pemesanan Komisi Berhasil Dikirim ke Seniman!");
+                setOpenModal(false);
+                setCommissionData({ title: '', category: '', price: '', description: '', imageUrl: '' }); // Reset Form
+            } else {
+                alert("Gagal mengirim komisi. Cek koneksi backend.");
+            }
+        } catch (error) {
+            console.error('Error submitting commission:', error);
+        }
+    };
 
     // MENGAMBIL USER DATA: Mengambil status login dari localStorage untuk keperluan otentikasi chat
     const currentUser = JSON.parse(localStorage.getItem('user'));
@@ -135,7 +166,7 @@ function ArtistDetail() {
                                 <Button variant="outlined" color="primary" style={{ borderWidth: '2px' }}>
                                     Ikuti Seniman
                                 </Button>
-                                <Button variant="contained" color="primary" style={{ color: '#FFFFFF' }}>
+                                <Button variant="contained" color="primary" onClick={handleOpenModal} style={{ color: '#FFFFFF' }}>
                                     Hubungi / Komisi
                                 </Button>
                             </Box>
@@ -215,6 +246,45 @@ function ArtistDetail() {
                     )}
                 </Grid>
             </Grid>
+
+            {/* MODAL FORMULIR KOMISI */}
+            <Dialog open={openModal} onClose={handleCloseModal} maxWidth="sm" fullWidth>
+                <DialogTitle style={{ fontWeight: 'bold', color: '#1A6B8A' }}>Formulir Permintaan Komisi</DialogTitle>
+                <DialogContent>
+                    <Typography variant="body2" color="text.secondary" mb={2}>
+                        Isi detail permintaan komisi seni Anda untuk {artist.artistName}.
+                    </Typography>
+                    <TextField
+                        fullWidth label="Judul Permintaan (Misal: Avatar 2D Headshot)" variant="outlined" margin="normal"
+                        value={commissionData.title}
+                        onChange={(e) => setCommissionData({...commissionData, title: e.target.value})}
+                    />
+                    <TextField
+                        fullWidth select label="Kategori" variant="outlined" margin="normal"
+                        value={commissionData.category}
+                        onChange={(e) => setCommissionData({...commissionData, category: e.target.value})}
+                    >
+                        {["Illustrations", "2D Avatars", "3D Models", "Emotes + Badges"].map((cat) => (
+                            <MenuItem key={cat} value={cat}>{cat}</MenuItem>
+                        ))}
+                    </TextField>
+                    <TextField
+                        fullWidth label="Tawaran Harga (Rp)" variant="outlined" margin="normal" type="number"
+                        value={commissionData.price}
+                        onChange={(e) => setCommissionData({...commissionData, price: e.target.value})}
+                    />
+                    <TextField
+                        fullWidth label="Deskripsi Detail" variant="outlined" margin="normal" multiline rows={4}
+                        placeholder="Jelaskan pose, warna, atau referensi secara detail..."
+                        value={commissionData.description}
+                        onChange={(e) => setCommissionData({...commissionData, description: e.target.value})}
+                    />
+                </DialogContent>
+                <DialogActions style={{ padding: '16px 24px' }}>
+                    <Button onClick={handleCloseModal} color="error" variant="outlined">Batal</Button>
+                    <Button onClick={handleCommissionSubmit} color="primary" variant="contained" style={{ color: '#FFFFFF' }}>Kirim Permintaan</Button>
+                </DialogActions>
+            </Dialog>
         </Container>
     );
 }
