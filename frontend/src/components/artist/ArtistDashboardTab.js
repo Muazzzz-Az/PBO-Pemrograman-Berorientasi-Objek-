@@ -1,81 +1,51 @@
 // src/components/artist/ArtistDashboardTab.js
 import React, { useState } from 'react';
-import { Box, Tabs, Tab, Typography } from '@mui/material';
+import { Box, Tabs, Tab } from '@mui/material';
 import PortfolioManager from './PortofolioManager';
-import CommisionManager from './CommisionManager';  // Nama file asli (tanpa huruf 's')
-import ShopManager from './ShopManager';
-import AnalyticsTab from './AnalyticsTab';
+import CommisionManager from './CommisionManager';
 
 export default function ArtistDashboardTab() {
   const [activeTab, setActiveTab] = useState(0);
 
+  // Fungsi render konten berdasarkan tab aktif
+  const renderContent = () => {
+    switch (activeTab) {
+      case 0:
+        return <PortfolioManager />;
+      case 1:
+        return <CommisionManager />;
+      default:
+        return null;
+    }
+  };
+
   return (
     <Box sx={{ width: '100%' }}>
+      {/* TAB UTAMA: Portfolio | Commissions | Shop | Analytics */}
       <Tabs
         value={activeTab}
         onChange={(e, newValue) => setActiveTab(newValue)}
         variant="fullWidth"
         sx={{
-          borderBottom: '2px solid #E2E8F0',
+          borderBottom: '1px solid #E2E8F0',
           mb: 4,
           '& .MuiTab-root': {
             textTransform: 'none',
             fontWeight: 600,
-            fontSize: '1rem',
-            py: 2,
-            color: '#64748B',
-            '&.Mui-selected': {
-              color: '#4A9FBF',
-            },
-          },
-          '& .MuiTabs-indicator': {
-            backgroundColor: '#4A9FBF',
-            height: 3,
-            borderRadius: '3px',
-          },
-        }}
-      >
-        <Tab label="📦 Portofolio & Komisi" />
-        <Tab label="🛍️ Toko" />
-        <Tab label="📊 Analytics" />
-      </Tabs>
-
-      <Box>
-        {activeTab === 0 && <PortfolioCommissionView />}
-        {activeTab === 1 && <ShopManager />}
-        {activeTab === 2 && <AnalyticsTab />}
-      </Box>
-    </Box>
-  );
-}
-
-// Komponen gabungan Portofolio & Komisi (tab di dalam tab)
-function PortfolioCommissionView() {
-  const [subTab, setSubTab] = useState(0);
-
-  return (
-    <Box>
-      <Tabs
-        value={subTab}
-        onChange={(e, newValue) => setSubTab(newValue)}
-        sx={{
-          mb: 3,
-          '& .MuiTab-root': {
-            textTransform: 'none',
             fontSize: '0.9rem',
-            minHeight: 40,
-            color: '#94A3B8',
+            py: 1.5,
+            color: '#64748B',
             '&.Mui-selected': { color: '#4A9FBF' },
           },
-          '& .MuiTabs-indicator': { backgroundColor: '#4A9FBF' },
+          '& .MuiTabs-indicator': { backgroundColor: '#4A9FBF', height: 2 },
         }}
       >
-        <Tab label="Portofolio" />
-        <Tab label="Komisi" />
+        <Tab label="Portfolio" />
+        <Tab label="Commissions" />
       </Tabs>
 
-      {subTab === 0 && <PortfolioManager />}
-      {subTab === 1 && <CommisionManager />}
+      {/* Konten sesuai tab */}
+      {renderContent()}
     </Box>
   );
 }
