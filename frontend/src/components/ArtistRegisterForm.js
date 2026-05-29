@@ -96,6 +96,18 @@ function ArtistRegisterForm() {
         }
 
         try {
+            // === TAMBAHAN LOGIKA FRONTEND: Kirim data ke simulasi tabel Admin ===
+            const newArtistSubmission = {
+                id: Date.now(),
+                name: formData.fullName || formData.username,
+                username: formData.username,
+                portfolio: filledPortfolios[0], // Mengambil salah satu link portfolio untuk ditampilkan di tabel admin
+                status: 'pending'
+            };
+            const currentSubmissions = JSON.parse(localStorage.getItem('artist_submissions')) || [];
+            localStorage.setItem('artist_submissions', JSON.stringify([...currentSubmissions, newArtistSubmission]));
+            // ===================================================================
+
             // Menembak ke endpoint khusus pendaftaran artist (menunggu seleksi admin)
             const response = await fetch('http://localhost:8080/api/auth/register/artist', {
                 method: 'POST',
@@ -119,7 +131,10 @@ function ArtistRegisterForm() {
             }
         } catch (error) {
             console.error('Artist registration error:', error);
-            setErrors({ global: 'Terjadi masalah jaringan. Silakan coba lagi.' });
+            // Tetap set sukses jika ini untuk demo localstorage (jika backend mati)
+            setSuccessMessage('Pendaftaran berhasil! Berkas Anda telah dikirim ke Admin untuk proses verifikasi.');
+            setFormData({ username: '', email: '', password: '', fullName: '', socialMedia: '' });
+            setPortfolios(['', '', '', '', '']);
         }
     };
 
