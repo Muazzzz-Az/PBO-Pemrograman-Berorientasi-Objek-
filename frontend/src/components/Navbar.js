@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { Link, useNavigate } from 'react-router-dom';
+import { Link, useNavigate, useLocation } from 'react-router-dom';
 import {
   AppBar,
   Toolbar,
@@ -76,6 +76,20 @@ const ArtistButton = styled(Button)(({ theme }) => ({
   },
 }));
 
+// --- STYLING BARU UNTUK TOMBOL SUB-KATEGORI ---
+const CategoryButton = styled(Button)(({ theme }) => ({
+  textTransform: 'none',
+  fontSize: '0.85rem',
+  fontWeight: 600,
+  color: '#5D6D7E',
+  padding: '4px 12px',
+  whiteSpace: 'nowrap',
+  '&:hover': {
+    color: '#4A9FBF',
+    backgroundColor: 'transparent',
+  },
+}));
+
 function Navbar({ isAuthenticated, user, setIsAuthenticated, setUser }) {
   const [mobileOpen, setMobileOpen] = useState(false);
   const [anchorEl, setAnchorEl] = useState(null);
@@ -87,6 +101,35 @@ function Navbar({ isAuthenticated, user, setIsAuthenticated, setUser }) {
   const theme = useTheme();
   const isMobile = useMediaQuery(theme.breakpoints.down('lg'));
   const navigate = useNavigate();
+  const location = useLocation();
+
+  // --- LOGIKA TOGGLE SUB-NAVBAR KATEGORI ---
+  const [showCategories, setShowCategories] = useState(false);
+
+  // Pantau rute jalan: kalau bukan di rute /category, paksa sembunyikan baris kategori
+  useEffect(() => {
+    if (location.pathname.includes('/category')) {
+      setShowCategories(true);
+    } else {
+      setShowCategories(false);
+      localStorage.removeItem('showNavbarCategories');
+    }
+  }, [location]);
+
+  useEffect(() => {
+    const handleCategoryEvent = () => {
+      setShowCategories(true);
+    };
+    window.addEventListener('categoryClicked', handleCategoryEvent);
+    return () => window.removeEventListener('categoryClicked', handleCategoryEvent);
+  }, []);
+
+  // Handler khusus klik logo / balik ke home untuk reset state bar kategori
+  const handleGoHome = () => {
+    localStorage.removeItem('showNavbarCategories');
+    setShowCategories(false);
+    navigate('/');
+  };
 
   // Cek apakah ada notifikasi persetujuan artist di localStorage
   useEffect(() => {
@@ -107,6 +150,7 @@ function Navbar({ isAuthenticated, user, setIsAuthenticated, setUser }) {
     localStorage.removeItem('token');
     localStorage.removeItem('user');
     localStorage.removeItem('artist_notification');
+    localStorage.removeItem('showNavbarCategories');
     setIsAuthenticated(false);
     setUser(null);
     setAnchorEl(null);
@@ -132,6 +176,17 @@ function Navbar({ isAuthenticated, user, setIsAuthenticated, setUser }) {
     { label: 'Shop', path: '/shop' }
   ];
 
+  // --- DATA KATEGORI YANG AKAN DITAMPILKAN PADA GARIS KEDUA ---
+  const categories = [
+    { label: 'Illustrations', path: '/category/illustrations' },
+    { label: '2D Avatars', path: '/category/2d-avatars' },
+    { label: '3D Models', path: '/category/3d-models' },
+    { label: 'Emotes + Badges', path: '/category/emotes-badges' },
+    { label: 'Stream Assets', path: '/category/stream-assets' },
+    { label: 'Branding + Graphics', path: '/category/branding-graphics' },
+    { label: 'Animation + Videos', path: '/category/animation-videos' }
+  ];
+
   return (
     <StyledAppBar position="sticky" color="transparent" elevation={0}>
       <Container maxWidth="xl">
@@ -139,7 +194,7 @@ function Navbar({ isAuthenticated, user, setIsAuthenticated, setUser }) {
 
           {/* Sisi Kiri: Logo */}
           <Box sx={{ display: 'flex', alignItems: 'center', gap: 3 }}>
-            <LogoContainer onClick={() => navigate('/')}>
+            <LogoContainer onClick={handleGoHome}>
               <LogoText variant="h6">
                 Crearts<span style={{ color: '#4A9FBF' }}>I</span>
               </LogoText>
@@ -148,7 +203,10 @@ function Navbar({ isAuthenticated, user, setIsAuthenticated, setUser }) {
             {!isMobile && (
               <Box sx={{ display: 'flex', gap: 0.5 }}>
                 {menuItems.map((item) => (
-                  <NavButton key={item.label} component={Link} to={item.path}>
+                  <NavButton key={item.label} component={Link} to={item.path} onClick={() => {
+                    localStorage.removeItem('showNavbarCategories');
+                    setShowCategories(false);
+                  }}>
                     {item.label}
                   </NavButton>
                 ))}
@@ -297,6 +355,24 @@ function Navbar({ isAuthenticated, user, setIsAuthenticated, setUser }) {
             </Box>
           )}
         </Toolbar>
+
+        {/* --- DI SINI GARIS KEDUA SUB-NAVBAR KATEGORI (MUNCUL JIKA KONDISI TRUE) --- */}
+        {!isMobile && showCategories && (
+          <Box sx={{
+            display: 'flex',
+            gap: 1,
+            py: 1,
+            borderTop: '1px solid rgba(74, 159, 191, 0.08)',
+            overflowX: 'auto',
+            justifyContent: 'flex-start'
+          }}>
+            {categories.map((cat) => (
+              <CategoryButton key={cat.label} component={Link} to={cat.path}>
+                {cat.label}
+              </CategoryButton>
+            ))}
+          </Box>
+        )}
       </Container>
 
       {/* Drawer Mobile View */}
@@ -320,6 +396,30 @@ function Navbar({ isAuthenticated, user, setIsAuthenticated, setUser }) {
                 <ListItemText primary={item.label} sx={{ primaryTypographyProps: { fontWeight: 600 } }} />
               </ListItem>
             ))}
+
+            {/* --- INTEGRASI SUB-MENU KATEGORI PADA MOBILE DRAWERS --- */}
+            {showCategories && (
+              <>
+                <Divider sx={{ my: 1 }} />
+                <Box px={2} py={0.5}>
+                  <Typography variant="caption" fontWeight={700} color="rgba(74, 159, 191, 0.6)">CATEGORIES</Typography>
+                </Box>
+                {categories.map((cat) => (
+                  <ListItem
+                    button
+                    key={cat.label}
+                    component={Link}
+                    to={cat.path}
+                    onClick={() => setMobileOpen(false)}
+                    sx={{ borderRadius: 2, mb: 0.5, color: '#5D6D7E', pl: 3, '&:hover': { color: '#4A9FBF', bgcolor: '#F2F7F9' } }}
+                  >
+                    <ListItemText primary={cat.label} sx={{ primaryTypographyProps: { fontSize: '0.9rem', fontWeight: 500 } }} />
+                  </ListItem>
+                ))}
+              </>
+            )}
+            <Divider sx={{ my: 1 }} />
+
             {isAuthenticated && (
               <ListItem button onClick={handleLogout} sx={{ borderRadius: 2, color: '#E74C3C', '&:hover': { bgcolor: '#FCE4EC' } }}>
                 <ListItemText primary="Keluar" sx={{ primaryTypographyProps: { fontWeight: 600 } }} />

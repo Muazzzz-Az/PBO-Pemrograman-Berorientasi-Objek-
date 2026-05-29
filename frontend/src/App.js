@@ -12,6 +12,7 @@ import RegisterForm from './components/RegisterForm';
 import ProfilePage from './components/ProfilePage';
 import CommissionList from './components/CommissionList';
 import ArtistRegisterForm from './components/ArtistRegisterForm';
+import CategoryPage from './components/CategoryPage';
 
 // admin package imports
 import AdminDashboard from './components/admin/AdminDashboard';
@@ -140,6 +141,7 @@ function App() {
           <Route path="/login" element={<LoginForm setIsAuthenticated={setIsAuthenticated} setUser={setUser} />} />
           <Route path="/register" element={<RegisterForm />} />
           <Route path="/for-artists" element={<ArtistRegisterForm />} />
+          <Route path="/category/:categoryId" element={<CategoryPage />} />
 
           {/* ============================================= */}
           {/* PRIVATE ROUTES (WAJIB LOGIN DULU) */}
