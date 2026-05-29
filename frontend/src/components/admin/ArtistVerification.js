@@ -1,18 +1,32 @@
-import React, { useState } from 'react';
-import {
-  Table, TableBody, TableCell, TableContainer, TableHead, TableRow,
-  Paper, Button, Typography, Chip, Box, Avatar
-} from '@mui/material';
+import React, { useState, useEffect } from 'react';
+import { Table, TableBody, TableCell, TableContainer, TableHead, TableRow, Paper, Button, Typography, Chip, Box } from '@mui/material';
 
 function ArtistVerification() {
-  // Contoh data dummy pendaftaran artist di Creartsl
-  const [submissions, setSubmissions] = useState([
-    { id: 1, name: 'Ahmad Syauqi', username: 'syauqi_art', portfolio: 'behance.net/syauqi', status: 'pending' },
-    { id: 2, name: 'Caesar Ramadhan', username: 'caesar_draws', portfolio: 'artstation.com/caesar', status: 'pending' }
-  ]);
+  const [submissions, setSubmissions] = useState([]);
+
+  useEffect(() => {
+    // Ambil kiriman data pendaftar dari localStorage
+    const savedSubmissions = JSON.parse(localStorage.getItem('artist_submissions')) || [
+      { id: 1, name: 'Ahmad Syauqi', username: 'syauqi_art', portfolio: 'behance.net/syauqi', status: 'pending' },
+      { id: 2, name: 'Caesar Ramadhan', username: 'caesar_draws', portfolio: 'artstation.com/caesar', status: 'pending' }
+    ];
+    setSubmissions(savedSubmissions);
+  }, []);
 
   const handleAction = (id, newStatus) => {
-    setSubmissions(submissions.map(sub => sub.id === id ? { ...sub, status: newStatus } : sub));
+    const updated = submissions.map(sub => {
+      if (sub.id === id) {
+        // Jika disetujui, buat bendera notifikasi untuk dibaca oleh navbar
+        if (newStatus === 'approved') {
+          localStorage.setItem('artist_notification', 'Selamat! Pengajuan Anda sebagai artist di Creartsl telah disetujui 🎉');
+        }
+        return { ...sub, status: newStatus };
+      }
+      return sub;
+    });
+
+    setSubmissions(updated);
+    localStorage.setItem('artist_submissions', JSON.stringify(updated));
     alert(`Status pendaftaran berhasil diubah menjadi: ${newStatus}`);
   };
 
@@ -38,7 +52,7 @@ function ArtistVerification() {
                 <TableCell>{row.name}</TableCell>
                 <TableCell>@{row.username}</TableCell>
                 <TableCell>
-                  <a href={`https://${row.portfolio}`} target="_blank" rel="noreferrer" style={{ color: '#4A9FBF', fontWeight: 600 }}>
+                  <a href={row.portfolio.startsWith('http') ? row.portfolio : `https://${row.portfolio}`} target="_blank" rel="noreferrer" style={{ color: '#4A9FBF', fontWeight: 600 }}>
                     {row.portfolio}
                   </a>
                 </TableCell>
