@@ -1,3 +1,4 @@
+// App.js - Modified Version
 import React, { useState, useEffect } from 'react';
 import { BrowserRouter as Router, Routes, Route, Navigate } from 'react-router-dom';
 import { ThemeProvider, createTheme } from '@mui/material/styles';
@@ -16,6 +17,12 @@ import ArtistRegisterForm from './components/ArtistRegisterForm';
 import AdminDashboard from './components/admin/AdminDashboard';
 import ProtectedRoute from './components/ProtectedRoute';
 
+// =============================================
+// KOMPONEN UNTUK PROTECT ROUTE YANG MEMERLUKAN LOGIN
+// =============================================
+const PrivateRoute = ({ children, isAuthenticated }) => {
+  return isAuthenticated ? children : <Navigate to="/login" replace />;
+};
 
 const pastelOceanTheme = createTheme({
   palette: {
@@ -112,6 +119,9 @@ function App() {
     localStorage.setItem('user', JSON.stringify(updatedUser));
   };
 
+  // Daftar route yang BOLEH diakses TANPA login (PUBLIC ROUTES)
+  const publicRoutes = ['/', '/login', '/register', '/for-artists'];
+
   return (
     <ThemeProvider theme={pastelOceanTheme}>
       <CssBaseline />
@@ -123,38 +133,71 @@ function App() {
           setUser={setUser}
         />
         <Routes>
+          {/* ============================================= */}
+          {/* PUBLIC ROUTES (Bisa diakses tanpa login) */}
+          {/* ============================================= */}
           <Route path="/" element={<HomePage />} />
-          <Route path="/artists" element={<ArtistList />} />
-          <Route path="/commissions" element={<CommissionList />} />
-          <Route path="/artists/:id" element={<ArtistDetail />} />
           <Route path="/login" element={<LoginForm setIsAuthenticated={setIsAuthenticated} setUser={setUser} />} />
           <Route path="/register" element={<RegisterForm />} />
+          <Route path="/for-artists" element={<ArtistRegisterForm />} />
 
+          {/* ============================================= */}
+          {/* PRIVATE ROUTES (WAJIB LOGIN DULU) */}
+          {/* ============================================= */}
+
+          {/* Halaman Artist - WAJIB LOGIN */}
+          <Route
+            path="/artists"
+            element={
+              <PrivateRoute isAuthenticated={isAuthenticated}>
+                <ArtistList />
+              </PrivateRoute>
+            }
+          />
+
+          {/* Halaman Detail Artist - WAJIB LOGIN */}
+          <Route
+            path="/artists/:id"
+            element={
+              <PrivateRoute isAuthenticated={isAuthenticated}>
+                <ArtistDetail />
+              </PrivateRoute>
+            }
+          />
+
+          {/* Halaman Commission List - WAJIB LOGIN */}
+          <Route
+            path="/commissions"
+            element={
+              <PrivateRoute isAuthenticated={isAuthenticated}>
+                <CommissionList />
+              </PrivateRoute>
+            }
+          />
+
+          {/* Halaman Profile - WAJIB LOGIN */}
           <Route
             path="/profile"
             element={
-              isAuthenticated ? (
+              <PrivateRoute isAuthenticated={isAuthenticated}>
                 <ProfilePage user={user} setUser={handleUpdateUser} />
-              ) : (
-                <Navigate to="/login" replace />
-              )
+              </PrivateRoute>
             }
           />
 
-          {/* SINKRONISASI: Mengunci rute dengan komponen ProtectedRoute */}
+          {/* Halaman Admin - WAJIB LOGIN dan role admin */}
           <Route
             path="/admin"
             element={
-              <ProtectedRoute user={user}>
-                <AdminDashboard />
-              </ProtectedRoute>
+              <PrivateRoute isAuthenticated={isAuthenticated}>
+                <ProtectedRoute user={user}>
+                  <AdminDashboard />
+                </ProtectedRoute>
+              </PrivateRoute>
             }
           />
 
-          {/* RUTE BARU: Mengarahkan tombol "I'm an artist+" ke halaman registrasi & seleksi khusus seniman */}
-          <Route path="/for-artists" element={<ArtistRegisterForm />} />
-
-          {/* CATCH-ALL ROUTE: Jika ngetik asal, lariin ke Home */}
+          {/* CATCH-ALL ROUTE: Redirect ke Home */}
           <Route path="*" element={<Navigate to="/" replace />} />
         </Routes>
       </Router>

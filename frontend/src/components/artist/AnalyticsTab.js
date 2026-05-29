@@ -2,7 +2,7 @@
 import React, { useState } from 'react';
 import { Box, Tabs, Tab, Typography } from '@mui/material';
 import PortfolioManager from './PortofolioManager';
-import CommisionManager from './CommisionManager';  // Nama file asli (tanpa huruf 's')
+import CommisionManager from './CommisionManager';
 import ShopManager from './ShopManager';
 import AnalyticsTab from './AnalyticsTab';
 
@@ -49,9 +49,21 @@ export default function ArtistDashboardTab() {
   );
 }
 
-// Komponen gabungan Portofolio & Komisi (tab di dalam tab)
+// Komponen terpisah untuk Portofolio & Komisi
 function PortfolioCommissionView() {
   const [subTab, setSubTab] = useState(0);
+
+  // Debug: cek apakah komponen ada
+  console.log('PortfolioManager:', PortfolioManager);
+  console.log('CommisionManager:', CommisionManager);
+
+  const renderContent = () => {
+    if (subTab === 0) {
+      return <PortfolioManager />;
+    } else {
+      return <CommisionManager />;
+    }
+  };
 
   return (
     <Box>
@@ -70,12 +82,11 @@ function PortfolioCommissionView() {
           '& .MuiTabs-indicator': { backgroundColor: '#4A9FBF' },
         }}
       >
-        <Tab label="Portofolio" />
-        <Tab label="Komisi" />
+        <Tab label="🎨 Portofolio" />
+        <Tab label="💰 Paket Komisi" />
       </Tabs>
 
-      {subTab === 0 && <PortfolioManager />}
-      {subTab === 1 && <CommisionManager />}
+      {renderContent()}
     </Box>
   );
 }

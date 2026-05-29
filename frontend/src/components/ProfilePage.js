@@ -1,4 +1,6 @@
+// ProfilePage.js - Modified
 import React, { useState, useRef } from 'react';
+import { useNavigate } from 'react-router-dom';
 import {
   Container,
   Box,
@@ -11,7 +13,13 @@ import {
   DialogTitle,
   DialogContent,
   IconButton,
-  Switch
+  Switch,
+  Tabs,
+  Tab,
+  Grid,
+  Card,
+  CardContent,
+  Chip
 } from '@mui/material';
 
 // MENGGUNAKAN DELETEOUTLINED (DENGAN AKHIRAN 'D') SESUAI EXPORTS YANG VALID
@@ -22,8 +30,15 @@ import {
   InfoOutlined as InfoOutlinedIcon,
   Add as AddIcon,
   Link as LinkIcon,
-  DeleteOutlined as DeleteOutlineIcon
+  DeleteOutlined as DeleteOutlineIcon,
+  Dashboard as DashboardIcon,
+  Store as StoreIcon,
+  Palette as PaletteIcon
 } from '@mui/icons-material';
+
+// Import komponen Artist Dashboard
+import ArtistDashboardTab from './artist/ArtistDashboardTab';
+import ShopManager from './artist/ShopManager';
 
 const formatJoinedDate = (dateString) => {
   if (!dateString) return 'MEI 2026';
@@ -35,9 +50,15 @@ const formatJoinedDate = (dateString) => {
 };
 
 function ProfilePage({ user, setUser }) {
+  const navigate = useNavigate();
   const [openEditModal, setOpenEditModal] = useState(false);
+  const [activeCreatorTab, setActiveCreatorTab] = useState(0);
+  const [showCreatorMode, setShowCreatorMode] = useState(false);
   const avatarInputRef = useRef(null);
   const bannerInputRef = useRef(null);
+
+  // Cek apakah user adalah artist terverifikasi
+  const isVerifiedArtist = user?.isVerified === true || user?.role === 'artist' || user?.role === 'admin';
 
   // State Utama Data Profil (Sinkron Luar-Dalam)
   const [formData, setFormData] = useState({
@@ -113,6 +134,74 @@ function ProfilePage({ user, setUser }) {
     }
   };
 
+  // Tombol Kreator Mode
+  const handleGoToCreatorMode = () => {
+    setShowCreatorMode(true);
+  };
+
+  const handleBackToProfile = () => {
+    setShowCreatorMode(false);
+  };
+
+  // Jika sedang dalam Creator Mode
+  if (showCreatorMode && isVerifiedArtist) {
+    return (
+      <Box sx={{ minHeight: '100vh', bgcolor: '#F0F9FF', pb: 8 }}>
+        <Container maxWidth="lg" sx={{ pt: 4 }}>
+          {/* Header Creator Dashboard */}
+          <Box sx={{ mb: 4, display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+            <Box>
+              <Typography variant="h4" sx={{ fontWeight: 800, color: '#1A6B8A' }}>
+                🎨 Creator Studio
+              </Typography>
+              <Typography variant="body2" sx={{ color: '#4A9FBF' }}>
+                Kelola portofolio, komisi, dan toko karyamu
+              </Typography>
+            </Box>
+            <Button
+              variant="outlined"
+              onClick={handleBackToProfile}
+              sx={{ borderColor: '#4A9FBF', color: '#4A9FBF', borderRadius: '20px' }}
+            >
+              ← Kembali ke Profil
+            </Button>
+          </Box>
+
+          {/* Tabs untuk Creator Mode */}
+          <Card sx={{ borderRadius: '20px', overflow: 'hidden' }}>
+            <Tabs
+              value={activeCreatorTab}
+              onChange={(e, newVal) => setActiveCreatorTab(newVal)}
+              sx={{
+                borderBottom: '1px solid rgba(74, 159, 191, 0.15)',
+                px: 2,
+                '& .MuiTab-root': { textTransform: 'none', fontWeight: 600, color: '#64748B' },
+                '& .Mui-selected': { color: '#4A9FBF !important' },
+                '& .MuiTabs-indicator': { bgcolor: '#4A9FBF' }
+              }}
+            >
+              <Tab icon={<PaletteIcon />} iconPosition="start" label="Portofolio & Komisi" />
+              <Tab icon={<StoreIcon />} iconPosition="start" label="Toko / Shop" />
+              <Tab icon={<DashboardIcon />} iconPosition="start" label="Analytics" />
+            </Tabs>
+
+            <Box sx={{ p: 4 }}>
+              {activeCreatorTab === 0 && <ArtistDashboardTab />}
+              {activeCreatorTab === 1 && <ShopManager user={user} />}
+              {activeCreatorTab === 2 && (
+                <Box textAlign="center" py={8}>
+                  <Typography variant="body1" color="text.secondary">
+                    📊 Analytics akan hadir segera! Statistik penjualan dan performa karyamu.
+                  </Typography>
+                </Box>
+              )}
+            </Box>
+          </Card>
+        </Container>
+      </Box>
+    );
+  }
+
   return (
     <Box sx={{ minHeight: '100vh', bgcolor: '#F0F9FF', pb: 8 }}>
 
@@ -135,7 +224,7 @@ function ProfilePage({ user, setUser }) {
         sx={{ position: 'relative', zIndex: 2, textAlign: 'center', display: 'flex', flexDirection: 'column', alignItems: 'center', mt: '-85px' }}
       >
         {/* Avatar Base */}
-        <Box sx={{ mb: 3, display: 'inline-block' }}>
+        <Box sx={{ mb: 3, display: 'inline-block', position: 'relative' }}>
           <Avatar
             src={formData.avatarUrl}
             sx={{
@@ -150,6 +239,22 @@ function ProfilePage({ user, setUser }) {
           >
             {!formData.avatarUrl && formData.fullName.charAt(0).toUpperCase()}
           </Avatar>
+          {/* Badge Verified untuk Artist */}
+          {isVerifiedArtist && (
+            <Chip
+              label="✓ Verified Artist"
+              size="small"
+              sx={{
+                position: 'absolute',
+                bottom: 0,
+                right: -10,
+                bgcolor: '#4A9FBF',
+                color: 'white',
+                fontWeight: 700,
+                fontSize: '0.7rem'
+              }}
+            />
+          )}
         </Box>
 
         <Box sx={{ width: '100%', maxWidth: '600px', px: 2 }}>
@@ -207,26 +312,47 @@ function ProfilePage({ user, setUser }) {
             BERGABUNG SEJAK {formatJoinedDate(user?.createdAt)}
           </Typography>
 
-          <Button
-            startIcon={<EditIcon />}
-            onClick={handleOpenModal}
-            variant="outlined"
-            sx={{
-              borderColor: '#4A9FBF',
-              color: '#4A9FBF',
-              borderRadius: '24px',
-              textTransform: 'none',
-              fontWeight: 700,
-              px: 4,
-              borderWidth: '2px',
-              '&:hover': { borderWidth: '2px', borderColor: '#1A6B8A', bgcolor: 'rgba(74, 159, 191, 0.08)' }
-            }}
-          >
-            Edit Profil
-          </Button>
+          {/* ===== BUTTON ACTION ===== */}
+          <Box display="flex" gap={2} justifyContent="center">
+            <Button
+              startIcon={<EditIcon />}
+              onClick={handleOpenModal}
+              variant="outlined"
+              sx={{
+                borderColor: '#4A9FBF',
+                color: '#4A9FBF',
+                borderRadius: '24px',
+                textTransform: 'none',
+                fontWeight: 700,
+                px: 4,
+                borderWidth: '2px',
+                '&:hover': { borderWidth: '2px', borderColor: '#1A6B8A', bgcolor: 'rgba(74, 159, 191, 0.08)' }
+              }}
+            >
+              Edit Profil
+            </Button>
+
+            {/* TOMBOL KREATOR - Muncul hanya jika user adalah verified artist */}
+            {isVerifiedArtist && (
+              <Button
+                startIcon={<DashboardIcon />}
+                onClick={handleGoToCreatorMode}
+                variant="contained"
+                sx={{
+                  bgcolor: '#1A6B8A',
+                  borderRadius: '24px',
+                  textTransform: 'none',
+                  fontWeight: 700,
+                  px: 4,
+                  '&:hover': { bgcolor: '#0E4B63' }
+                }}
+              >
+                🎨 Kreator Mode
+              </Button>
+            )}
+          </Box>
         </Box>
       </Container>
-
 
       {/* ==================== MODAL WINDOW ==================== */}
       <Dialog
