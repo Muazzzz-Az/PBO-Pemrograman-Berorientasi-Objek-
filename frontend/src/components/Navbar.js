@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import {
   AppBar,
@@ -79,25 +79,52 @@ const ArtistButton = styled(Button)(({ theme }) => ({
 function Navbar({ isAuthenticated, user, setIsAuthenticated, setUser }) {
   const [mobileOpen, setMobileOpen] = useState(false);
   const [anchorEl, setAnchorEl] = useState(null);
+
+  // State untuk dropdown lonceng
+  const [anchorElNotif, setAnchorElNotif] = useState(null);
+  const [hasNewNotif, setHasNewNotif] = useState(false);
+
   const theme = useTheme();
   const isMobile = useMediaQuery(theme.breakpoints.down('lg'));
   const navigate = useNavigate();
 
+  // Cek apakah ada notifikasi persetujuan artist di localStorage
+  useEffect(() => {
+    const checkNotif = () => {
+      if (isAuthenticated) {
+        const notifData = localStorage.getItem('artist_notification');
+        if (notifData) {
+          setHasNewNotif(true);
+        }
+      }
+    };
+    checkNotif();
+    window.addEventListener('storage', checkNotif);
+    return () => window.removeEventListener('storage', checkNotif);
+  }, [isAuthenticated]);
+
   const handleLogout = () => {
     localStorage.removeItem('token');
     localStorage.removeItem('user');
+    localStorage.removeItem('artist_notification');
     setIsAuthenticated(false);
     setUser(null);
     setAnchorEl(null);
+    setHasNewNotif(false);
     navigate('/');
   };
 
-  const handleMenuOpen = (event) => {
-    setAnchorEl(event.currentTarget);
-  };
+  const handleMenuOpen = (event) => setAnchorEl(event.currentTarget);
+  const handleMenuClose = () => setAnchorEl(null);
 
-  const handleMenuClose = () => {
-    setAnchorEl(null);
+  const handleNotifOpen = (event) => setAnchorElNotif(event.currentTarget);
+  const handleNotifClose = () => setAnchorElNotif(null);
+
+  // Klik notifikasi untuk menghapus titik merah/badge lonceng
+  const handleClearNotif = () => {
+    localStorage.removeItem('artist_notification');
+    setHasNewNotif(false);
+    handleNotifClose();
   };
 
   const menuItems = [
@@ -110,7 +137,7 @@ function Navbar({ isAuthenticated, user, setIsAuthenticated, setUser }) {
       <Container maxWidth="xl">
         <Toolbar sx={{ justifyContent: 'space-between', py: 0.8, px: { xs: 0, md: 1 } }}>
 
-          {/* Sisi Kiri: Logo Tetap Direct Ke Beranda */}
+          {/* Sisi Kiri: Logo */}
           <Box sx={{ display: 'flex', alignItems: 'center', gap: 3 }}>
             <LogoContainer onClick={() => navigate('/')}>
               <LogoText variant="h6">
@@ -133,23 +160,61 @@ function Navbar({ isAuthenticated, user, setIsAuthenticated, setUser }) {
           {!isMobile ? (
             <Box sx={{ display: 'flex', gap: 2, alignItems: 'center' }}>
 
-              {/* Lonceng BARU: Hanya muncul di kiri "I'm an artist+" jika SUDAH login */}
+              {/* Lonceng bawaanmu dengan badge titik merah minimalis */}
               {isAuthenticated && (
                 <Tooltip title="Pemberitahuan">
-                  <IconButton sx={{ color: '#5D6D7E', p: 1, '&:hover': { bgcolor: '#F2F7F9', color: '#4A9FBF' } }}>
-                    <Badge color="error" variant="dot" overlap="circular">
+                  <IconButton
+                    onClick={handleNotifOpen}
+                    sx={{ color: '#5D6D7E', p: 1, '&:hover': { bgcolor: '#F2F7F9', color: '#4A9FBF' } }}
+                  >
+                    <Badge color="error" variant="dot" invisible={!hasNewNotif} overlap="circular">
                       <NotificationsNoneIcon sx={{ width: 24, height: 24 }} />
                     </Badge>
                   </IconButton>
                 </Tooltip>
               )}
 
+              {/* Dropdown Menu Teks Notifikasi Simpel */}
+              <Menu
+                anchorEl={anchorElNotif}
+                open={Boolean(anchorElNotif)}
+                onClose={handleNotifClose}
+                transformOrigin={{ horizontal: 'right', vertical: 'top' }}
+                anchorOrigin={{ horizontal: 'right', vertical: 'bottom' }}
+                PaperProps={{
+                  sx: {
+                    borderRadius: 4,
+                    mt: 1.5,
+                    width: 260,
+                    bgcolor: '#FFFFFF',
+                    border: '1px solid rgba(74, 159, 191, 0.15)',
+                    boxShadow: '0 10px 30px rgba(0,0,0,0.05)'
+                  }
+                }}
+              >
+                <Box px={2} py={1}>
+                  <Typography variant="subtitle2" fontWeight={700} color="#1A6B8A">Pemberitahuan</Typography>
+                </Box>
+                <Divider />
+                {!hasNewNotif ? (
+                  <Box p={2} textAlign="center">
+                    <Typography variant="body2" color="textSecondary">Tidak ada notifikasi baru</Typography>
+                  </Box>
+                ) : (
+                  <MenuItem onClick={handleClearNotif} sx={{ py: 1.5, whiteSpace: 'normal' }}>
+                    <Typography variant="body2" sx={{ color: '#2C3E50', fontWeight: 600 }}>
+                      🎉 Verifikasi Kreator berhasil
+                    </Typography>
+                  </MenuItem>
+                )}
+              </Menu>
+
               {/* Tombol Artist */}
               <ArtistButton component={Link} to="/for-artists">
                 I'm an artist+
               </ArtistButton>
 
-              {/* Bagian Dinamis Tombol Profile / Dropdown */}
+              {/* Tombol Profile / Dropdown */}
               <Box>
                 {!isAuthenticated ? (
                   <IconButton
@@ -159,7 +224,6 @@ function Navbar({ isAuthenticated, user, setIsAuthenticated, setUser }) {
                     <AccountCircleIcon sx={{ width: 32, height: 32 }} />
                   </IconButton>
                 ) : (
-                  /* SUDAH LOGIN: Tampilkan Avatar Inisial */
                   <IconButton onClick={handleMenuOpen} sx={{ p: 0.5, border: '1px solid rgba(74, 159, 191, 0.2)' }}>
                     <Avatar sx={{ bgcolor: '#4A9FBF', color: '#FFFFFF', width: 32, height: 32, fontSize: '0.9rem', fontWeight: 'bold' }}>
                       {user?.fullName?.charAt(0) || user?.username?.charAt(0)}
@@ -167,7 +231,6 @@ function Navbar({ isAuthenticated, user, setIsAuthenticated, setUser }) {
                   </IconButton>
                 )}
 
-                {/* Dropdown Menu yang Menyesuaikan Kondisi */}
                 <Menu
                   anchorEl={anchorEl}
                   open={Boolean(anchorEl)}
@@ -186,7 +249,6 @@ function Navbar({ isAuthenticated, user, setIsAuthenticated, setUser }) {
                   }}
                 >
                   {isAuthenticated ? (
-                    /* Menu saat SUDAH Login */
                     <Box>
                       <MenuItem component={Link} to="/profile" onClick={handleMenuClose} sx={{ fontSize: '0.9rem', fontWeight: 500, '&:hover': { bgcolor: '#F2F7F9', color: '#4A9FBF' } }}>
                         Profile
@@ -208,10 +270,10 @@ function Navbar({ isAuthenticated, user, setIsAuthenticated, setUser }) {
                   ) : (
                     <Box>
                       <MenuItem onClick={() => { navigate('/login'); handleMenuClose(); }} sx={{ fontSize: '0.9rem', fontWeight: 600, color: '#1A6B8A', '&:hover': { bgcolor: '#F2F7F9' } }}>
-                      Login
+                        Login
                       </MenuItem>
                       <MenuItem onClick={() => { navigate('/register'); handleMenuClose(); }} sx={{ fontSize: '0.9rem', fontWeight: 500, '&:hover': { bgcolor: '#F2F7F9' } }}>
-                       Sign Up
+                        Sign Up
                       </MenuItem>
                     </Box>
                   )}
@@ -223,8 +285,8 @@ function Navbar({ isAuthenticated, user, setIsAuthenticated, setUser }) {
             /* Versi Mobile Menu */
             <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
               {isAuthenticated && (
-                <IconButton sx={{ color: '#5D6D7E' }}>
-                  <Badge color="error" variant="dot">
+                <IconButton onClick={handleNotifOpen} sx={{ color: '#5D6D7E' }}>
+                  <Badge color="error" variant="dot" invisible={!hasNewNotif}>
                     <NotificationsNoneIcon />
                   </Badge>
                 </IconButton>
