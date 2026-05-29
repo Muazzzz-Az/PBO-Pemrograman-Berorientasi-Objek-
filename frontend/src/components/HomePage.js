@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { Link } from 'react-router-dom';
+import { Link, useNavigate } from 'react-router-dom';
 import {
   Box,
   Container,
@@ -12,7 +12,8 @@ import {
   Stack,
   Chip,
   Modal,
-  IconButton
+  IconButton,
+  Divider
 } from '@mui/material';
 import { motion } from 'framer-motion';
 import ArrowForwardIcon from '@mui/icons-material/ArrowForward';
@@ -137,25 +138,40 @@ const HeroSection = () => (
   </Box>
 );
 
-const CommissionServices = () => (
-  <Container maxWidth="xl" sx={{ py: 4 }}>
-    <Typography variant="h5" fontWeight={850} sx={{ mb: 3, color: '#1A6B8A' }}>
-      Commission Human Artists <span style={{ color: '#4A9FBF' }}>CreartsI+</span>
-    </Typography>
-    <Grid container spacing={2}>
-      {vgenServices.map((service, idx) => (
-        <Grid item xs={6} sm={4} md={3} key={idx}>
-          <motion.div whileHover={{ y: -4 }} transition={{ duration: 0.2 }}>
-            <Card sx={{ background: service.gradient, p: 3, height: '110px', position: 'relative', borderRadius: '20px', cursor: 'pointer', display: 'flex', alignItems: 'flex-end', border: 'none', boxShadow: '0 6px 15px rgba(0,0,0,0.02)' }}>
-              <Box sx={{ position: 'absolute', top: 16, right: 16, color: service.color, opacity: 0.7, '& svg': { fontSize: 30 } }}>{service.icon}</Box>
-              <Typography variant="subtitle1" fontWeight={800} sx={{ color: service.color, lineHeight: 1.2 }}>{service.title}</Typography>
-            </Card>
-          </motion.div>
-        </Grid>
-      ))}
-    </Grid>
-  </Container>
-);
+const CommissionServices = () => {
+  const navigate = useNavigate();
+
+  const handleCategoryClick = (title) => {
+    localStorage.setItem('showNavbarCategories', 'true');
+    window.dispatchEvent(new Event('categoryClicked'));
+    const pathName = title.toLowerCase().replace(/ \+ /g, '-').replace(/ /g, '-');
+    navigate(`/category/${pathName}`);
+  };
+
+  return (
+    <Container maxWidth="xl" sx={{ py: 4 }}>
+      <Typography variant="h5" fontWeight={850} sx={{ mb: 3, color: '#1A6B8A' }}>
+        Commission Human Artists <span style={{ color: '#4A9FBF' }}>CreartsI+</span>
+      </Typography>
+      <Grid container spacing={2}>
+        {vgenServices.map((service, idx) => (
+          <Grid item xs={6} sm={4} md={3} key={idx}>
+            <motion.div
+              whileHover={{ y: -4 }}
+              transition={{ duration: 0.2 }}
+              onClick={() => handleCategoryClick(service.title)}
+            >
+              <Card sx={{ background: service.gradient, p: 3, height: '110px', position: 'relative', borderRadius: '20px', cursor: 'pointer', display: 'flex', alignItems: 'flex-end', border: 'none', boxShadow: '0 6px 15px rgba(0,0,0,0.02)' }}>
+                <Box sx={{ position: 'absolute', top: 16, right: 16, color: service.color, opacity: 0.7, '& svg': { fontSize: 30 } }}>{service.icon}</Box>
+                <Typography variant="subtitle1" fontWeight={800} sx={{ color: service.color, lineHeight: 1.2 }}>{service.title}</Typography>
+              </Card>
+            </motion.div>
+          </Grid>
+        ))}
+      </Grid>
+    </Container>
+  );
+};
 
 const NoAISection = () => (
   <Container maxWidth="xl" sx={{ my: 4 }}>
@@ -300,10 +316,11 @@ function HomePage() {
                   <Typography variant="caption" sx={{ color: '#4A9FBF', fontWeight: 800, textTransform: 'uppercase', letterSpacing: 1 }}>
                     {selectedService.category}
                   </Typography>
-                  <Typography variant="h5" fontWeight={800} sx={{ mt: 1, mb: 2, color: '#1A6B8A', lineHeight: 1.3 }}>
+                  <Typography variant="h5" fontWeight={800} sx={{ mt: 1, mb: 1, color: '#1A6B8A', lineHeight: 1.3 }}>
                     {selectedService.title}
                   </Typography>
-                  <Typography variant="body2" sx={{ color: '#5D6D7E' }}>Starting from</Typography>
+
+                  <Typography variant="body2" sx={{ color: '#5D6D7E', mt: 1 }}>Starting from</Typography>
                   <Typography variant="h4" fontWeight={900} sx={{ color: '#4A9FBF', mb: 3 }}>{selectedService.price}</Typography>
 
                   <Typography variant="subtitle2" sx={{ color: '#1C2833', mb: 1.5, fontWeight: 700 }}>Terms & Licenses:</Typography>
@@ -333,19 +350,38 @@ function HomePage() {
                       Follow
                     </Button>
                   </Stack>
+
+                  {/* Catatan Info Syarat Layanan Tambahan (Sesuai Layout VGen Gambar 1) */}
+                  <Box sx={{ bgcolor: '#F2F7F9', p: 2, borderRadius: '14px', mb: 2 }}>
+                    <Typography variant="body2" sx={{ color: '#5D6D7E', lineHeight: 1.5, fontSize: '0.85rem' }}>
+                      Thanks for considering me for your commission! Please only start a request if you find the service details and my Terms of Service acceptable.
+                    </Typography>
+                  </Box>
                 </Box>
 
-                {/* Bagian Bawah Action (Sudah Diperbaiki Pembungkusnya) */}
+                {/* Bagian Bawah Action */}
                 <Box>
-                  <Stack direction="row" spacing={2} sx={{ mb: 2 }}>
-                    <Button variant="contained" fullWidth sx={{ bgcolor: '#4A9FBF', color: 'white', fontWeight: 700, py: 1.5, borderRadius: '14px', '&:hover': { bgcolor: '#1A6B8A' } }}>
-                      Ajukan Permintaan Komisi
+                  <Stack direction="row" spacing={2} sx={{ mb: 1.5 }} alignItems="center">
+                    <Button variant="contained" fullWidth sx={{ bgcolor: '#4A9FBF', color: 'white', fontWeight: 700, py: 1.5, borderRadius: '14px', '&:hover': { bgcolor: '#1A6B8A' }, textTransform: 'none' }}>
+                      Accept terms to start request
                     </Button>
-                    <IconButton sx={{ border: '1px solid rgba(74, 159, 191, 0.2)', color: '#4A9FBF', borderRadius: '14px' }}>
+                    <IconButton sx={{ border: '1px solid rgba(74, 159, 191, 0.2)', color: '#4A9FBF', borderRadius: '14px', p: 1.5 }}>
                       <ChatBubbleOutlineIcon />
                     </IconButton>
                   </Stack>
-                </Box> {/* <-- Di sini penutup Box yang bener */}
+                  <Chip
+                    label="Only 3 slots left"
+                    size="small"
+                    sx={{
+                      bgcolor: 'rgba(135, 211, 124, 0.2)',
+                      color: '#27AE60',
+                      fontWeight: 800,
+                      borderRadius: '8px',
+                      width: '100%',
+                      py: 1.8
+                    }}
+                  />
+                </Box>
 
               </Box>
             </Box>
