@@ -27,6 +27,7 @@ function ArtistVerification() {
 
           // Ambil daftar notifikasi yang sudah ada, lalu masukkan yang baru
           const existingNotifications = JSON.parse(localStorage.getItem('user_notifications')) || [];
+          localStorage.setItem('user_notifications', JSON.stringify([newNotification, ...existingNotifications]));
 
           // Cari data user global di localStorage untuk mengubah field isVerified menjadi true secara otomatis
           const allUsers = JSON.parse(localStorage.getItem('registered_users')) || [];
