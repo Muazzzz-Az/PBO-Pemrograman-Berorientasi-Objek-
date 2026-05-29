@@ -11,9 +11,12 @@ import {
     Typography,
     Avatar,
     Chip,
-    InputAdornment
+    InputAdornment,
+    Button,
+    Divider
 } from '@mui/material';
 import SearchIcon from '@mui/icons-material/Search';
+import { artistService } from '../api/ArtistService'; 
 
 function ArtistList() {
     const [artists, setArtists] = useState([]);
@@ -21,7 +24,6 @@ function ArtistList() {
     const [searchTerm, setSearchTerm] = useState('');
     const [category, setCategory] = useState('');
 
-    // DAFTAR KATEGORI BARU YANG DISESUAIKAN DENGAN BANNER BERANDA
     const categories = [
         "Illustrations",
         "2D Avatars",
@@ -38,13 +40,8 @@ function ArtistList() {
 
     const fetchArtists = async () => {
         try {
-            let url = 'http://localhost:8080/api/artists';
-            if (category) {
-                // Meng-encode URI agar space seperti '+' atau ' ' aman dikirim lewat URL
-                url += `/category/${encodeURIComponent(category)}`;
-            }
-            const response = await fetch(url);
-            const data = await response.json();
+            setLoading(true);
+            let data = category ? await artistService.getByCategory(category) : await artistService.getAll();
             setArtists(data);
             setLoading(false);
         } catch (error) {
@@ -67,18 +64,18 @@ function ArtistList() {
     }
 
     return (
-        <Container maxWidth="lg" style={{ marginTop: '40px', marginBottom: '6px' }}>
+        <Container maxWidth="lg" style={{ marginTop: '100px', marginBottom: '60px' }}>
             <Box textAlign="center" mb={5}>
-                <Typography variant="h2" style={{ fontSize: '2.2rem', marginBottom: '10px' }}>
+                <Typography variant="h2" style={{ fontSize: '2.5rem', fontWeight: 800, marginBottom: '16px', color: '#1A202C' }}>
                     Telusuri Kreator Berbakat
                 </Typography>
-                <Typography variant="body1" color="text.secondary">
+                <Typography variant="body1" color="text.secondary" style={{ fontSize: '1.1rem' }}>
                     Temukan seniman lokal idamanmu untuk mewujudkan karya komisi impian
                 </Typography>
             </Box>
 
             {/* SEKSI FILTER PENCARIAN & KATEGORI */}
-            <Box display="flex" gap={2} mb={5} flexDirection={{ xs: 'column', sm: 'row' }}>
+            <Box display="flex" gap={2} flexDirection={{ xs: 'column', sm: 'row' }}>
                 <TextField
                     placeholder="Cari nama seniman..."
                     variant="outlined"
@@ -109,80 +106,128 @@ function ArtistList() {
                 </TextField>
             </Box>
 
-            {/* GRID ARTIST CARD */}
-            <Grid container spacing={4}>
-                {filteredArtists.length > 0 ? (
-                    filteredArtists.map(artist => (
-                        <Grid item xs={12} sm={6} md={4} key={artist.id}>
-                            <Card component={Link} to={`/artists/${artist.id}`} style={{
-                                textDecoration: 'none',
-                                display: 'block',
-                                transition: 'transform 0.2s, box-shadow 0.2s',
-                                cursor: 'pointer',
-                                height: '100%'
-                            }}
-                            onMouseOver={(e) => {
-                                e.currentTarget.style.transform = 'translateY(-6px)';
-                                e.currentTarget.style.boxShadow = '0 15px 35px rgba(74, 159, 191, 0.12)';
-                            }}
-                            onMouseOut={(e) => {
-                                e.currentTarget.style.transform = 'translateY(0)';
-                                e.currentTarget.style.boxShadow = '0 10px 30px rgba(74, 159, 191, 0.04)';
-                            }}
-                            >
-                                {/* Banner kecil atau background atas card */}
-                                <Box sx={{ height: '100px', backgroundColor: '#E6F5E5', position: 'relative' }} />
+            {/* FIX 1: Margin Top Ekstra di sini (mt={5}) menjauhkan grid kartu dari kotak pencarian */}
+            <Box mt={5}>
+                <Grid container spacing={3}>
+                    {filteredArtists.length > 0 ? (
+                        filteredArtists.map(artist => (
+                            <Grid item xs={12} sm={6} md={4} lg={3} key={artist.id}>
+                                {/* FIX 2: height: '100%' memastikan semua kartu di baris yang sama punya tinggi yang sama rata */}
+                                <Card style={{
+                                    height: '100%',
+                                    display: 'flex',
+                                    flexDirection: 'column',
+                                    borderRadius: '16px',
+                                    transition: 'transform 0.2s, box-shadow 0.2s',
+                                    border: '1px solid rgba(0,0,0,0.05)',
+                                    backgroundColor: '#ffffff'
+                                }}
+                                onMouseOver={(e) => {
+                                    e.currentTarget.style.transform = 'translateY(-6px)';
+                                    e.currentTarget.style.boxShadow = '0 15px 35px rgba(74, 159, 191, 0.15)';
+                                }}
+                                onMouseOut={(e) => {
+                                    e.currentTarget.style.transform = 'translateY(0)';
+                                    e.currentTarget.style.boxShadow = '0 4px 10px rgba(0,0,0,0.03)';
+                                }}
+                                >
+                                    {/* Banner Atas Kartu */}
+                                    <Box sx={{ height: '80px', backgroundColor: 'rgba(74, 159, 191, 0.15)', position: 'relative' }} />
 
-                                <CardContent style={{ textAlign: 'center', pt: 0, position: 'relative', marginTop: '-45px' }}>
-                                    <Avatar
-                                        src={artist.profilePicture}
-                                        alt={artist.artistName}
-                                        style={{
-                                            width: '90px',
-                                            height: '90px',
-                                            margin: '0 auto 12px auto',
-                                            border: '4px solid #FFFFFF',
-                                            boxShadow: '0 4px 10px rgba(0,0,0,0.05)',
-                                            backgroundColor: '#4A9FBF',
-                                            fontSize: '2rem'
-                                        }}
-                                    >
-                                        {artist.artistName ? artist.artistName.charAt(0) : '🎨'}
-                                    </Avatar>
+                                    <CardContent style={{ 
+                                        flexGrow: 1, 
+                                        display: 'flex', 
+                                        flexDirection: 'column', 
+                                        alignItems: 'center', 
+                                        padding: '0 20px 20px 20px', 
+                                        marginTop: '-40px' 
+                                    }}>
+                                        <Avatar
+                                            src={artist.profilePicture}
+                                            alt={artist.artistName}
+                                            style={{
+                                                width: '80px',
+                                                height: '80px',
+                                                marginBottom: '12px',
+                                                border: '4px solid #FFFFFF',
+                                                boxShadow: '0 4px 10px rgba(0,0,0,0.05)',
+                                                backgroundColor: '#4A9FBF',
+                                                fontSize: '1.5rem',
+                                                zIndex: 1
+                                            }}
+                                        >
+                                            {artist.artistName ? artist.artistName.charAt(0) : '🎨'}
+                                        </Avatar>
 
-                                    <Typography variant="h5" color="text.primary" style={{ fontWeight: 700, fontSize: '1.25rem' }}>
-                                        {artist.artistName || "Tanpa Nama"}
-                                    </Typography>
-
-                                    <Chip
-                                        label={artist.artCategory || "General"}
-                                        color="primary"
-                                        size="small"
-                                        style={{ marginTop: '8px', marginBottom: '14px', backgroundColor: 'rgba(74, 159, 191, 0.1)', color: '#1A6B8A', fontWeight: 600 }}
-                                    />
-
-                                    <Typography variant="body2" color="text.secondary" style={{ minHeight: '40px', lineHeight: 1.4, marginBottom: '16px' }}>
-                                        {artist.bio ? `${artist.bio.substring(0, 75)}...` : "Kreator ini belum menuliskan biodata deskripsi profil mereka."}
-                                    </Typography>
-
-                                    <Box display="flex" justifyContent="space-around" borderTop="1px solid rgba(74, 159, 191, 0.08)" pt={2} mt={1}>
-                                        <Typography variant="caption" color="text.secondary" style={{ display: 'flex', alignItems: 'center', gap: '4px', fontWeight: 600 }}>
-                                            👥 {artist.followersCount || 0} Pengikut
+                                        <Typography variant="h6" color="text.primary" style={{ fontWeight: 800, fontSize: '1.1rem', lineHeight: 1.2, textAlign: 'center' }}>
+                                            {artist.artistName || "Tanpa Nama"}
                                         </Typography>
-                                        <Typography variant="caption" style={{ color: '#F39C12', fontWeight: 700, display: 'flex', alignItems: 'center', gap: '4px' }}>
-                                            ⭐ {artist.rating || '5.0'}
+
+                                        <Chip
+                                            label={artist.artCategory || "General"}
+                                            size="small"
+                                            style={{ marginTop: '8px', marginBottom: '12px', backgroundColor: '#E6F5E5', color: '#2E7D32', fontWeight: 700, fontSize: '0.7rem' }}
+                                        />
+
+                                        {/* CSS Line-Clamp agar Bio konsisten 2 baris */}
+                                        <Typography variant="body2" color="text.secondary" style={{ 
+                                            textAlign: 'center', 
+                                            fontSize: '0.85rem',
+                                            display: '-webkit-box',
+                                            WebkitLineClamp: 2,
+                                            WebkitBoxOrient: 'vertical',
+                                            overflow: 'hidden',
+                                            textOverflow: 'ellipsis',
+                                            marginBottom: '16px'
+                                        }}>
+                                            {artist.bio || "Kreator ini belum menuliskan biodata deskripsi profil mereka."}
                                         </Typography>
-                                    </Box>
-                                </CardContent>
-                            </Card>
-                        </Grid>
-                    ))
-                ) : (
-                    <Box width="100%" textAlign="center" py={8}>
-                        <Typography variant="body1" color="text.secondary">Tidak ada seniman yang cocok dengan pencarian Anda.</Typography>
-                    </Box>
-                )}
-            </Grid>
+
+                                        {/* FIX 3: Box Bawah (Footer Kartu). mt: 'auto' menekan box ini ke bawah. Tombol CTA ditambahkan untuk mengisi kekosongan. */}
+                                        <Box mt="auto" width="100%">
+                                            <Divider sx={{ mb: 1.5 }} />
+                                            <Box display="flex" justifyContent="space-between" alignItems="center" mb={2}>
+                                                <Typography variant="caption" color="text.secondary" style={{ display: 'flex', alignItems: 'center', gap: '4px', fontWeight: 700 }}>
+                                                    👥 {artist.followersCount || 0} Pengikut
+                                                </Typography>
+                                                <Typography variant="caption" style={{ color: '#F39C12', fontWeight: 800, display: 'flex', alignItems: 'center', gap: '4px' }}>
+                                                    ⭐ {artist.rating || '5.0'}
+                                                </Typography>
+                                            </Box>
+                                            
+                                            {/* Tombol Call-to-Action untuk menghilangkan ruang kosong yang jelek */}
+                                            <Button 
+                                                component={Link} 
+                                                to={`/artists/${artist.id}`}
+                                                variant="outlined" 
+                                                fullWidth 
+                                                size="small" 
+                                                sx={{ 
+                                                    borderRadius: '8px', 
+                                                    textTransform: 'none', 
+                                                    fontWeight: 700,
+                                                    color: '#4A9FBF',
+                                                    borderColor: '#4A9FBF',
+                                                    '&:hover': {
+                                                        backgroundColor: 'rgba(74, 159, 191, 0.1)',
+                                                        borderColor: '#4A9FBF'
+                                                    }
+                                                }}
+                                            >
+                                                Lihat Portofolio
+                                            </Button>
+                                        </Box>
+                                    </CardContent>
+                                </Card>
+                            </Grid>
+                        ))
+                    ) : (
+                        <Box width="100%" textAlign="center" py={8}>
+                            <Typography variant="body1" color="text.secondary">Tidak ada seniman yang cocok dengan pencarian Anda.</Typography>
+                        </Box>
+                    )}
+                </Grid>
+            </Box>
         </Container>
     );
 }
