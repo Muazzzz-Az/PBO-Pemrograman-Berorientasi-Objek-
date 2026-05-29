@@ -5,7 +5,6 @@ function ArtistVerification() {
   const [submissions, setSubmissions] = useState([]);
 
   useEffect(() => {
-    // Ambil kiriman data pendaftar dari localStorage
     const savedSubmissions = JSON.parse(localStorage.getItem('artist_submissions')) || [
       { id: 1, name: 'Ahmad Syauqi', username: 'syauqi_art', portfolio: 'behance.net/syauqi', status: 'pending' },
       { id: 2, name: 'Caesar Ramadhan', username: 'caesar_draws', portfolio: 'artstation.com/caesar', status: 'pending' }
@@ -16,9 +15,28 @@ function ArtistVerification() {
   const handleAction = (id, newStatus) => {
     const updated = submissions.map(sub => {
       if (sub.id === id) {
-        // Jika disetujui, buat bendera notifikasi untuk dibaca oleh navbar
         if (newStatus === 'approved') {
-          localStorage.setItem('artist_notification', 'Selamat! Pengajuan Anda sebagai artist di Creartsl telah disetujui 🎉');
+          // Buat struktur objek notifikasi baru untuk Lonceng Header
+          const newNotification = {
+            id: Date.now(),
+            message: `Selamat! Pengajuan verifikasi Artist untuk @${sub.username} telah disetujui Admin. Anda sekarang bisa mengakses fitur Artist! 🎉`,
+            type: 'ARTIST_APPROVAL',
+            isRead: false,
+            timestamp: new Date().toLocaleTimeString('id-ID', { hour: '2-digit', minute: '2-digit' })
+          };
+
+          // Ambil daftar notifikasi yang sudah ada, lalu masukkan yang baru
+          const existingNotifications = JSON.parse(localStorage.getItem('user_notifications')) || [];
+
+          // Cari data user global di localStorage untuk mengubah field isVerified menjadi true secara otomatis
+          const allUsers = JSON.parse(localStorage.getItem('registered_users')) || [];
+          const updatedUsers = allUsers.map(user => {
+            if (user.username === sub.username) {
+              return { ...user, isVerified: true, role: 'artist' }; // Otomatis ubah role dasar ke artist
+            }
+            return user;
+          });
+          localStorage.setItem('registered_users', JSON.stringify(updatedUsers));
         }
         return { ...sub, status: newStatus };
       }
