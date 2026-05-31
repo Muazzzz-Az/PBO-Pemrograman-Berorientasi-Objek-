@@ -1,11 +1,11 @@
-// ArtistDetail.js - Fixed with Real Data
-import React, { useState, useEffect, useRef } from 'react';
+// ArtistDetail.js - Fixed Version (Tampilan tetap sama, hanya chat yang diperbaiki)
+import React, { useState, useEffect } from 'react';
 import { useParams, Link, useNavigate } from 'react-router-dom';
 import {
   Box, Container, Grid, Card, CardContent, Typography, Avatar, Chip, Button, IconButton,
   Dialog, DialogTitle, DialogContent, DialogActions, TextField, MenuItem,
-  Tabs, Tab, Divider, Rating, Stack, Alert, Snackbar, CircularProgress,
-  InputAdornment, Checkbox, FormControlLabel
+  Divider, Rating, Stack, Alert, Snackbar, CircularProgress,
+  Checkbox, FormControlLabel
 } from '@mui/material';
 import ArrowBackIcon from '@mui/icons-material/ArrowBack';
 import ShoppingCartIcon from '@mui/icons-material/ShoppingCart';
@@ -14,8 +14,7 @@ import CloseIcon from '@mui/icons-material/Close';
 import UploadFileIcon from '@mui/icons-material/UploadFile';
 import AddLinkIcon from '@mui/icons-material/AddLink';
 import VerifiedIcon from '@mui/icons-material/Verified';
-import InstagramIcon from '@mui/icons-material/Instagram';
-import LanguageIcon from '@mui/icons-material/Language';
+import RealTimeChatBox from './RealTimeChatBox';
 
 // ==========================================
 // GET REAL DATA FROM LOCALSTORAGE
@@ -30,11 +29,6 @@ const getArtists = () => {
   return saved ? JSON.parse(saved) : [];
 };
 
-const getPortfolio = () => {
-  const saved = localStorage.getItem('creartsi_artist_portfolio');
-  return saved ? JSON.parse(saved) : [];
-};
-
 function ArtistDetail() {
   const { id } = useParams();
   const navigate = useNavigate();
@@ -43,19 +37,14 @@ function ArtistDetail() {
   const [commission, setCommission] = useState(null);
   const [artist, setArtist] = useState(null);
   const [loading, setLoading] = useState(true);
-  const [activeTab, setActiveTab] = useState(0);
-  const [artistPortfolio, setArtistPortfolio] = useState([]);
 
   // Request Modal
   const [openRequest, setOpenRequest] = useState(false);
   const [requestStep, setRequestStep] = useState(1);
   const [submitting, setSubmitting] = useState(false);
 
-  // Chat Modal
+  // Chat Modal - HANYA INI YANG DIPERLUKAN
   const [openChat, setOpenChat] = useState(false);
-  const [chatMessage, setChatMessage] = useState('');
-  const [chatHistory, setChatHistory] = useState([]);
-  const messagesEndRef = useRef(null);
 
   // Notifikasi
   const [snackbar, setSnackbar] = useState({ open: false, message: '', severity: 'success' });
@@ -173,57 +162,19 @@ function ArtistDetail() {
     }, 1500);
   };
 
-  // Chat handlers
-  useEffect(() => {
-    if (!isLoggedIn || !openChat) return;
-    const roomId = `chat_${Math.min(currentUser?.id, artist?.id || commission?.artistId)}_${Math.max(currentUser?.id, artist?.id || commission?.artistId)}`;
-    const savedChat = localStorage.getItem(`chat_${roomId}`);
-    if (savedChat) {
-      setChatHistory(JSON.parse(savedChat));
-    }
-  }, [isLoggedIn, openChat, artist, commission]);
-
-  useEffect(() => {
-    messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
-  }, [chatHistory]);
-
-  const handleSendMessage = () => {
-    if (!chatMessage.trim()) return;
-
-    const artistId = artist?.id || commission?.artistId;
-    const roomId = `chat_${Math.min(currentUser?.id, artistId)}_${Math.max(currentUser?.id, artistId)}`;
-    const newMessage = {
-      id: Date.now(),
-      text: chatMessage,
-      senderId: currentUser.id,
-      senderName: currentUser.fullName,
-      timestamp: new Date().toISOString()
-    };
-
-    const savedChat = JSON.parse(localStorage.getItem(`chat_${roomId}`) || '[]');
-    savedChat.push(newMessage);
-    localStorage.setItem(`chat_${roomId}`, JSON.stringify(savedChat));
-    setChatHistory([...chatHistory, newMessage]);
-    setChatMessage('');
-  };
-
-  // LOAD DATA - Fix ini yang paling penting!
+  // LOAD DATA
   useEffect(() => {
     const loadData = () => {
       setLoading(true);
 
-      // Ambil semua commission
       const commissions = getArtistCommissions();
       const artists = getArtists();
-      const portfolios = getPortfolio();
 
-      // Cari commission berdasarkan ID dari URL
       const foundCommission = commissions.find(c => c.id === parseInt(id));
 
       if (foundCommission) {
         setCommission(foundCommission);
 
-        // Cari artist berdasarkan nama atau artistId
         const foundArtist = artists.find(a =>
           a.name === foundCommission.artistName ||
           a.id === foundCommission.artistId
@@ -232,7 +183,6 @@ function ArtistDetail() {
         if (foundArtist) {
           setArtist(foundArtist);
         } else {
-          // Fallback artist data
           setArtist({
             id: foundCommission.artistId || Date.now(),
             artistName: foundCommission.artistName || 'Artist',
@@ -246,14 +196,8 @@ function ArtistDetail() {
             defaultPrice: foundCommission.priceFrom || 500000
           });
         }
-
-        // Cari portfolio untuk artist ini
-        const artistPortfolioItems = portfolios.filter(p =>
-          p.artistName === foundCommission.artistName
-        );
-        setArtistPortfolio(artistPortfolioItems);
       } else {
-        // Jika commission tidak ditemukan, buat data dummy untuk testing
+        // Data dummy untuk testing
         setCommission({
           id: parseInt(id),
           title: 'Commission Package',
@@ -621,40 +565,23 @@ function ArtistDetail() {
         )}
       </Dialog>
 
-      {/* CHAT MODAL */}
+      {/* ==================== CHAT MODAL - MENGGUNAKAN REAL TIME CHAT ==================== */}
       <Dialog open={openChat} onClose={() => setOpenChat(false)} maxWidth="sm" fullWidth>
-        <DialogTitle sx={{ bgcolor: '#4A9FBF', color: 'white' }}>
+        <DialogTitle sx={{ bgcolor: '#4A9FBF', color: 'white', py: 2 }}>
           <Stack direction="row" justifyContent="space-between" alignItems="center">
             <Typography fontWeight={700}>Chat with {artist.artistName}</Typography>
-            <IconButton onClick={() => setOpenChat(false)} sx={{ color: 'white' }}><CloseIcon /></IconButton>
+            <IconButton onClick={() => setOpenChat(false)} sx={{ color: 'white' }}>
+              <CloseIcon />
+            </IconButton>
           </Stack>
         </DialogTitle>
-        <DialogContent sx={{ p: 0, height: 450, display: 'flex', flexDirection: 'column' }}>
-          <Box sx={{ flex: 1, overflowY: 'auto', p: 2, bgcolor: '#F8FAFC' }}>
-            {chatHistory.length === 0 ? (
-              <Box textAlign="center" py={8}>
-                <ChatIcon sx={{ fontSize: 48, color: '#94A3B8', mb: 2 }} />
-                <Typography variant="body2" color="text.secondary">This is the beginning of your direct message history with {artist.artistName}.</Typography>
-                <Typography variant="caption" color="text.secondary">Go ahead and say hi!</Typography>
-              </Box>
-            ) : (
-              chatHistory.map((msg) => (
-                <Box key={msg.id} sx={{ mb: 2, display: 'flex', justifyContent: msg.senderId === currentUser?.id ? 'flex-end' : 'flex-start' }}>
-                  <Box sx={{ maxWidth: '75%', bgcolor: msg.senderId === currentUser?.id ? '#4A9FBF' : 'white', p: 1.5, borderRadius: '16px' }}>
-                    <Typography variant="caption" sx={{ display: 'block', color: msg.senderId === currentUser?.id ? '#E0F2FE' : '#94A3B8' }}>{msg.senderName}</Typography>
-                    <Typography variant="body2" sx={{ color: msg.senderId === currentUser?.id ? 'white' : '#1C2833' }}>{msg.text}</Typography>
-                    <Typography variant="caption" sx={{ display: 'block', mt: 0.5, color: msg.senderId === currentUser?.id ? '#E0F2FE' : '#94A3B8' }}>{new Date(msg.timestamp).toLocaleTimeString()}</Typography>
-                  </Box>
-                </Box>
-              ))
-            )}
-            <div ref={messagesEndRef} />
-          </Box>
-          <Divider />
-          <Box sx={{ p: 2, display: 'flex', gap: 1, bgcolor: 'white' }}>
-            <TextField size="small" fullWidth placeholder={`Message ${artist.artistName}...`} value={chatMessage} onChange={(e) => setChatMessage(e.target.value)} onKeyPress={(e) => e.key === 'Enter' && handleSendMessage()} />
-            <Button variant="contained" onClick={handleSendMessage} sx={{ bgcolor: '#4A9FBF', borderRadius: '40px' }}>Send</Button>
-          </Box>
+        <DialogContent sx={{ p: 0 }}>
+          <RealTimeChatBox
+            artistId={artist.id}
+            artistName={artist.artistName}
+            currentUser={currentUser}
+            commissionId={commission.id}
+          />
         </DialogContent>
       </Dialog>
 

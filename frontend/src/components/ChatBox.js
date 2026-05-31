@@ -55,6 +55,30 @@ function ChatBox({ artistId, artistName, currentUser }) {
         socket.emit('send_message', messageData);
         setMessage('');
     };
+    // Add this to existing ChatBox.js - modify handleSendMessage
+    const handleSendMessage = () => {
+      if (message.trim() === '') return;
+
+      const messageData = {
+        id: Date.now(),
+        text: message,
+        senderId: currentUser.id,
+        senderName: currentUser.fullName || currentUser.username,
+        receiverId: artistId,
+        roomId: roomId,
+        timestamp: new Date().toISOString(),
+        isRead: false
+      };
+
+      // Save to localStorage
+      const savedChat = JSON.parse(localStorage.getItem(`chat_${roomId}`) || '[]');
+      savedChat.push(messageData);
+      localStorage.setItem(`chat_${roomId}`, JSON.stringify(savedChat));
+
+      // Update UI
+      setChatLog([...chatLog, messageData]);
+      setMessage('');
+    };
 
     // PROTEKSI: Jika user belum login, tampilkan pesan peringatan
     if (!currentUser) {

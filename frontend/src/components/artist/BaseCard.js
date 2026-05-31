@@ -1,7 +1,6 @@
 import React from 'react';
 import { Box } from '@mui/material';
 
-// Mewariskan struktur desain dasar pastel khas CreartsI
 export default function BaseCard({ children, sx, ...props }) {
   return (
     <Box

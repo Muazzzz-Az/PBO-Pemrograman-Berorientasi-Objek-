@@ -28,6 +28,7 @@ import ChatIcon from '@mui/icons-material/Chat';
 import VerifiedIcon from '@mui/icons-material/Verified';
 import FilterListIcon from '@mui/icons-material/FilterList';
 import SortIcon from '@mui/icons-material/Sort';
+import { cartService } from '../services/RealTimeDataService';
 
 // ==========================================
 // GET REAL DATA FROM LOCALSTORAGE
@@ -65,6 +66,19 @@ function ArtistList() {
     { value: 'Branding + Graphics', label: 'Branding + Graphics' },
     { value: 'Animation + Videos', label: 'Animation + Videos' }
   ];
+
+  const handleSaveToCart = (e, commission) => {
+    e.stopPropagation(); // Biar tidak membuka detail
+    const currentUser = JSON.parse(localStorage.getItem('user'));
+
+    if (!currentUser) {
+      alert('Please login first to save to cart');
+      return;
+    }
+
+    cartService.addToCart(commission, currentUser.id);
+    alert(`Added "${commission.title}" to your cart!`);
+  };
 
   const sortOptions = [
     { value: 'relevant', label: 'Most Relevant' },

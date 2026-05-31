@@ -1,3 +1,4 @@
+
 import React, { useState, useEffect } from 'react';
 import { Link, useNavigate, useLocation } from 'react-router-dom';
 import {
@@ -26,6 +27,7 @@ import CloseIcon from '@mui/icons-material/Close';
 import AccountCircleIcon from '@mui/icons-material/AccountCircle';
 import NotificationsNoneIcon from '@mui/icons-material/NotificationsNone';
 import { styled } from '@mui/material/styles';
+import { cartService } from '../services/RealTimeDataService';
 
 const StyledAppBar = styled(AppBar)(({ theme }) => ({
   background: '#FFFFFF',
@@ -76,7 +78,6 @@ const ArtistButton = styled(Button)(({ theme }) => ({
   },
 }));
 
-// --- STYLING BARU UNTUK TOMBOL SUB-KATEGORI ---
 const CategoryButton = styled(Button)(({ theme }) => ({
   textTransform: 'none',
   fontSize: '0.85rem',
@@ -93,20 +94,26 @@ const CategoryButton = styled(Button)(({ theme }) => ({
 function Navbar({ isAuthenticated, user, setIsAuthenticated, setUser }) {
   const [mobileOpen, setMobileOpen] = useState(false);
   const [anchorEl, setAnchorEl] = useState(null);
-
-  // State untuk dropdown lonceng
   const [anchorElNotif, setAnchorElNotif] = useState(null);
-  const [hasNewNotif, setHasNewNotif] = useState(false);
+  const [notifications, setNotifications] = useState([]);
+  const [unreadCount, setUnreadCount] = useState(0);
+  const [cartCount, setCartCount] = useState(0);
 
   const theme = useTheme();
   const isMobile = useMediaQuery(theme.breakpoints.down('lg'));
   const navigate = useNavigate();
   const location = useLocation();
-
-  // --- LOGIKA TOGGLE SUB-NAVBAR KATEGORI ---
   const [showCategories, setShowCategories] = useState(false);
 
-  // Pantau rute jalan: kalau bukan di rute /category, paksa sembunyikan baris kategori
+  // Load cart count
+  useEffect(() => {
+    if (user) {
+      const cart = cartService.getCart();
+      const userCart = cart.filter(item => item.userId === user.id);
+      setCartCount(userCart.length);
+    }
+  }, [user]);
+
   useEffect(() => {
     if (location.pathname.includes('/category')) {
       setShowCategories(true);
@@ -124,27 +131,60 @@ function Navbar({ isAuthenticated, user, setIsAuthenticated, setUser }) {
     return () => window.removeEventListener('categoryClicked', handleCategoryEvent);
   }, []);
 
-  // Handler khusus klik logo / balik ke home untuk reset state bar kategori
+  // Load notifications from localStorage
+  useEffect(() => {
+    const loadNotifications = () => {
+      const savedNotifications = JSON.parse(localStorage.getItem('user_notifications')) || [];
+      setNotifications(savedNotifications);
+      const unread = savedNotifications.filter(n => !n.isRead).length;
+      setUnreadCount(unread);
+    };
+
+    loadNotifications();
+
+    const handleStorageChange = (e) => {
+      if (e.key === 'user_notifications') {
+        loadNotifications();
+      }
+    };
+    window.addEventListener('storage', handleStorageChange);
+
+    return () => window.removeEventListener('storage', handleStorageChange);
+  }, []);
+
+  // Check for artist verification notification
+  useEffect(() => {
+    const checkArtistNotification = () => {
+      const notifData = localStorage.getItem('artist_notification');
+      if (notifData && isAuthenticated) {
+        const existingNotifs = JSON.parse(localStorage.getItem('user_notifications')) || [];
+        const alreadyExists = existingNotifs.some(n => n.message === notifData);
+
+        if (!alreadyExists) {
+          const newNotification = {
+            id: Date.now(),
+            message: notifData,
+            type: 'ARTIST_APPROVAL',
+            isRead: false,
+            timestamp: new Date().toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit' })
+          };
+          const updatedNotifs = [newNotification, ...existingNotifs];
+          localStorage.setItem('user_notifications', JSON.stringify(updatedNotifs));
+          setNotifications(updatedNotifs);
+          setUnreadCount(prev => prev + 1);
+        }
+        localStorage.removeItem('artist_notification');
+      }
+    };
+
+    checkArtistNotification();
+  }, [isAuthenticated]);
+
   const handleGoHome = () => {
     localStorage.removeItem('showNavbarCategories');
     setShowCategories(false);
     navigate('/');
   };
-
-  // Cek apakah ada notifikasi persetujuan artist di localStorage
-  useEffect(() => {
-    const checkNotif = () => {
-      if (isAuthenticated) {
-        const notifData = localStorage.getItem('artist_notification');
-        if (notifData) {
-          setHasNewNotif(true);
-        }
-      }
-    };
-    checkNotif();
-    window.addEventListener('storage', checkNotif);
-    return () => window.removeEventListener('storage', checkNotif);
-  }, [isAuthenticated]);
 
   const handleLogout = () => {
     localStorage.removeItem('token');
@@ -154,7 +194,6 @@ function Navbar({ isAuthenticated, user, setIsAuthenticated, setUser }) {
     setIsAuthenticated(false);
     setUser(null);
     setAnchorEl(null);
-    setHasNewNotif(false);
     navigate('/');
   };
 
@@ -164,11 +203,29 @@ function Navbar({ isAuthenticated, user, setIsAuthenticated, setUser }) {
   const handleNotifOpen = (event) => setAnchorElNotif(event.currentTarget);
   const handleNotifClose = () => setAnchorElNotif(null);
 
-  // Klik notifikasi untuk menghapus titik merah/badge lonceng
-  const handleClearNotif = () => {
-    localStorage.removeItem('artist_notification');
-    setHasNewNotif(false);
-    handleNotifClose();
+  const handleMarkAsRead = (notifId) => {
+    const updatedNotifs = notifications.map(notif =>
+      notif.id === notifId ? { ...notif, isRead: true } : notif
+    );
+    localStorage.setItem('user_notifications', JSON.stringify(updatedNotifs));
+    setNotifications(updatedNotifs);
+    const unread = updatedNotifs.filter(n => !n.isRead).length;
+    setUnreadCount(unread);
+  };
+
+  const handleMarkAllAsRead = () => {
+    const updatedNotifs = notifications.map(notif => ({ ...notif, isRead: true }));
+    localStorage.setItem('user_notifications', JSON.stringify(updatedNotifs));
+    setNotifications(updatedNotifs);
+    setUnreadCount(0);
+  };
+
+  const handleClearNotification = (notifId) => {
+    const updatedNotifs = notifications.filter(n => n.id !== notifId);
+    localStorage.setItem('user_notifications', JSON.stringify(updatedNotifs));
+    setNotifications(updatedNotifs);
+    const unread = updatedNotifs.filter(n => !n.isRead).length;
+    setUnreadCount(unread);
   };
 
   const menuItems = [
@@ -176,7 +233,6 @@ function Navbar({ isAuthenticated, user, setIsAuthenticated, setUser }) {
     { label: 'Shop', path: '/shop' }
   ];
 
-  // --- DATA KATEGORI YANG AKAN DITAMPILKAN PADA GARIS KEDUA ---
   const categories = [
     { label: 'Illustrations', path: '/category/illustrations' },
     { label: '2D Avatars', path: '/category/2d-avatars' },
@@ -192,7 +248,7 @@ function Navbar({ isAuthenticated, user, setIsAuthenticated, setUser }) {
       <Container maxWidth="xl">
         <Toolbar sx={{ justifyContent: 'space-between', py: 0.8, px: { xs: 0, md: 1 } }}>
 
-          {/* Sisi Kiri: Logo */}
+          {/* Left Side: Logo */}
           <Box sx={{ display: 'flex', alignItems: 'center', gap: 3 }}>
             <LogoContainer onClick={handleGoHome}>
               <LogoText variant="h6">
@@ -214,25 +270,25 @@ function Navbar({ isAuthenticated, user, setIsAuthenticated, setUser }) {
             )}
           </Box>
 
-          {/* Sisi Kanan: Actions */}
+          {/* Right Side: Actions */}
           {!isMobile ? (
             <Box sx={{ display: 'flex', gap: 2, alignItems: 'center' }}>
 
-              {/* Lonceng bawaanmu dengan badge titik merah minimalis */}
+              {/* Bell Icon */}
               {isAuthenticated && (
-                <Tooltip title="Pemberitahuan">
+                <Tooltip title="Notifications">
                   <IconButton
                     onClick={handleNotifOpen}
                     sx={{ color: '#5D6D7E', p: 1, '&:hover': { bgcolor: '#F2F7F9', color: '#4A9FBF' } }}
                   >
-                    <Badge color="error" variant="dot" invisible={!hasNewNotif} overlap="circular">
+                    <Badge badgeContent={unreadCount} color="error" overlap="circular">
                       <NotificationsNoneIcon sx={{ width: 24, height: 24 }} />
                     </Badge>
                   </IconButton>
                 </Tooltip>
               )}
 
-              {/* Dropdown Menu Teks Notifikasi Simpel */}
+              {/* Notifications Menu */}
               <Menu
                 anchorEl={anchorElNotif}
                 open={Boolean(anchorElNotif)}
@@ -243,36 +299,78 @@ function Navbar({ isAuthenticated, user, setIsAuthenticated, setUser }) {
                   sx: {
                     borderRadius: 4,
                     mt: 1.5,
-                    width: 260,
+                    width: 320,
+                    maxHeight: 400,
                     bgcolor: '#FFFFFF',
                     border: '1px solid rgba(74, 159, 191, 0.15)',
                     boxShadow: '0 10px 30px rgba(0,0,0,0.05)'
                   }
                 }}
               >
-                <Box px={2} py={1}>
-                  <Typography variant="subtitle2" fontWeight={700} color="#1A6B8A">Pemberitahuan</Typography>
+                <Box px={2} py={1.5} display="flex" justifyContent="space-between" alignItems="center">
+                  <Typography variant="subtitle2" fontWeight={700} color="#1A6B8A">
+                    Notifications
+                  </Typography>
+                  {notifications.length > 0 && unreadCount > 0 && (
+                    <Button size="small" onClick={handleMarkAllAsRead} sx={{ textTransform: 'none', fontSize: '0.7rem' }}>
+                      Mark all as read
+                    </Button>
+                  )}
                 </Box>
                 <Divider />
-                {!hasNewNotif ? (
-                  <Box p={2} textAlign="center">
-                    <Typography variant="body2" color="textSecondary">Tidak ada notifikasi baru</Typography>
+
+                {notifications.length === 0 ? (
+                  <Box p={3} textAlign="center">
+                    <Typography variant="body2" color="textSecondary">No notifications yet</Typography>
                   </Box>
                 ) : (
-                  <MenuItem onClick={handleClearNotif} sx={{ py: 1.5, whiteSpace: 'normal' }}>
-                    <Typography variant="body2" sx={{ color: '#2C3E50', fontWeight: 600 }}>
-                      🎉 Verifikasi Kreator berhasil
-                    </Typography>
-                  </MenuItem>
+                  <Box sx={{ maxHeight: 320, overflowY: 'auto' }}>
+                    {notifications.map((notif) => (
+                      <MenuItem
+                        key={notif.id}
+                        onClick={() => handleMarkAsRead(notif.id)}
+                        sx={{
+                          py: 1.5,
+                          px: 2,
+                          whiteSpace: 'normal',
+                          backgroundColor: notif.isRead ? 'transparent' : '#F0F9FF',
+                          borderBottom: '1px solid #F1F5F9',
+                          display: 'flex',
+                          flexDirection: 'column',
+                          alignItems: 'flex-start',
+                          gap: 0.5
+                        }}
+                      >
+                        <Box display="flex" justifyContent="space-between" width="100%">
+                          <Typography variant="body2" sx={{ fontWeight: notif.isRead ? 400 : 600, color: '#2C3E50' }}>
+                            {notif.type === 'ARTIST_APPROVAL' ? '🎉 Artist Verification' : '📢 Notification'}
+                          </Typography>
+                          <IconButton
+                            size="small"
+                            onClick={(e) => { e.stopPropagation(); handleClearNotification(notif.id); }}
+                            sx={{ p: 0.5 }}
+                          >
+                            <CloseIcon sx={{ fontSize: 14, color: '#94A3B8' }} />
+                          </IconButton>
+                        </Box>
+                        <Typography variant="body2" sx={{ color: '#475569', pr: 3 }}>
+                          {notif.message}
+                        </Typography>
+                        <Typography variant="caption" sx={{ color: '#94A3B8' }}>
+                          {notif.timestamp}
+                        </Typography>
+                      </MenuItem>
+                    ))}
+                  </Box>
                 )}
               </Menu>
 
-              {/* Tombol Artist */}
+              {/* Artist Button */}
               <ArtistButton component={Link} to="/for-artists">
                 I'm an artist+
               </ArtistButton>
 
-              {/* Tombol Profile / Dropdown */}
+              {/* Profile Dropdown */}
               <Box>
                 {!isAuthenticated ? (
                   <IconButton
@@ -308,43 +406,42 @@ function Navbar({ isAuthenticated, user, setIsAuthenticated, setUser }) {
                 >
                   {isAuthenticated ? (
                     <Box>
-                      <MenuItem component={Link} to="/profile" onClick={handleMenuClose} sx={{ fontSize: '0.9rem', fontWeight: 500, '&:hover': { bgcolor: '#F2F7F9', color: '#4A9FBF' } }}>
+                      <MenuItem component={Link} to="/profile" onClick={handleMenuClose} sx={{ fontSize: '0.9rem', fontWeight: 500 }}>
                         Profile
                       </MenuItem>
-                      <MenuItem component={Link} to="/messages" onClick={handleMenuClose} sx={{ fontSize: '0.9rem', fontWeight: 500, '&:hover': { bgcolor: '#F2F7F9', color: '#4A9FBF' } }}>
-                        💬 Kotak Chat
+                      <MenuItem component={Link} to="/messages" onClick={handleMenuClose} sx={{ fontSize: '0.9rem', fontWeight: 500 }}>
+                        💬 Messages
                       </MenuItem>
-                      <MenuItem component={Link} to="/cart" onClick={handleMenuClose} sx={{ fontSize: '0.9rem', fontWeight: 500, '&:hover': { bgcolor: '#F2F7F9', color: '#4A9FBF' } }}>
-                        🛍️ Keranjang Belanja
+                      <MenuItem component={Link} to="/cart" onClick={handleMenuClose} sx={{ fontSize: '0.9rem', fontWeight: 500 }}>
+                        🛍️ Cart {cartCount > 0 && `(${cartCount})`}
                       </MenuItem>
-                      <MenuItem component={Link} to="/my-commissions" onClick={handleMenuClose} sx={{ fontSize: '0.9rem', fontWeight: 500, '&:hover': { bgcolor: '#F2F7F9', color: '#4A9FBF' } }}>
-                        🎨 Komisi Saya
+                      <MenuItem component={Link} to="/my-commissions" onClick={handleMenuClose} sx={{ fontSize: '0.9rem', fontWeight: 500 }}>
+                        🎨 My Commissions
                       </MenuItem>
                       <Divider />
-                      <MenuItem onClick={handleLogout} sx={{ fontSize: '0.9rem', fontWeight: 600, color: '#E74C3C', '&:hover': { bgcolor: '#FCE4EC' } }}>
+                      <MenuItem onClick={handleLogout} sx={{ fontSize: '0.9rem', fontWeight: 600, color: '#E74C3C' }}>
                         Log out
                       </MenuItem>
                     </Box>
                   ) : (
                     <Box>
-                      <MenuItem onClick={() => { navigate('/login'); handleMenuClose(); }} sx={{ fontSize: '0.9rem', fontWeight: 600, color: '#1A6B8A', '&:hover': { bgcolor: '#F2F7F9' } }}>
+                      <MenuItem onClick={() => { navigate('/login'); handleMenuClose(); }} sx={{ fontSize: '0.9rem', fontWeight: 600, color: '#1A6B8A' }}>
                         Login
                       </MenuItem>
-                      <MenuItem onClick={() => { navigate('/register'); handleMenuClose(); }} sx={{ fontSize: '0.9rem', fontWeight: 500, '&:hover': { bgcolor: '#F2F7F9' } }}>
+                      <MenuItem onClick={() => { navigate('/register'); handleMenuClose(); }} sx={{ fontSize: '0.9rem', fontWeight: 500 }}>
                         Sign Up
                       </MenuItem>
                     </Box>
                   )}
                 </Menu>
               </Box>
-
             </Box>
           ) : (
-            /* Versi Mobile Menu */
+            /* Mobile Menu */
             <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
               {isAuthenticated && (
                 <IconButton onClick={handleNotifOpen} sx={{ color: '#5D6D7E' }}>
-                  <Badge color="error" variant="dot" invisible={!hasNewNotif}>
+                  <Badge badgeContent={unreadCount} color="error">
                     <NotificationsNoneIcon />
                   </Badge>
                 </IconButton>
@@ -356,7 +453,7 @@ function Navbar({ isAuthenticated, user, setIsAuthenticated, setUser }) {
           )}
         </Toolbar>
 
-        {/* --- DI SINI GARIS KEDUA SUB-NAVBAR KATEGORI (MUNCUL JIKA KONDISI TRUE) --- */}
+        {/* Category Sub-navbar */}
         {!isMobile && showCategories && (
           <Box sx={{
             display: 'flex',
@@ -375,7 +472,7 @@ function Navbar({ isAuthenticated, user, setIsAuthenticated, setUser }) {
         )}
       </Container>
 
-      {/* Drawer Mobile View */}
+      {/* Mobile Drawer */}
       <Drawer anchor="right" open={mobileOpen} onClose={() => setMobileOpen(false)}>
         <Box sx={{ width: 280, p: 2, bgcolor: '#FFFFFF', height: '100%' }}>
           <Box sx={{ display: 'flex', justifyContent: 'flex-end', mb: 2 }}>
@@ -391,13 +488,12 @@ function Navbar({ isAuthenticated, user, setIsAuthenticated, setUser }) {
                 component={Link}
                 to={item.path}
                 onClick={() => setMobileOpen(false)}
-                sx={{ borderRadius: 2, mb: 1, color: '#5D6D7E', '&:hover': { color: '#4A9FBF', bgcolor: '#F2F7F9' } }}
+                sx={{ borderRadius: 2, mb: 1, color: '#5D6D7E' }}
               >
                 <ListItemText primary={item.label} sx={{ primaryTypographyProps: { fontWeight: 600 } }} />
               </ListItem>
             ))}
 
-            {/* --- INTEGRASI SUB-MENU KATEGORI PADA MOBILE DRAWERS --- */}
             {showCategories && (
               <>
                 <Divider sx={{ my: 1 }} />
@@ -411,7 +507,7 @@ function Navbar({ isAuthenticated, user, setIsAuthenticated, setUser }) {
                     component={Link}
                     to={cat.path}
                     onClick={() => setMobileOpen(false)}
-                    sx={{ borderRadius: 2, mb: 0.5, color: '#5D6D7E', pl: 3, '&:hover': { color: '#4A9FBF', bgcolor: '#F2F7F9' } }}
+                    sx={{ borderRadius: 2, mb: 0.5, color: '#5D6D7E', pl: 3 }}
                   >
                     <ListItemText primary={cat.label} sx={{ primaryTypographyProps: { fontSize: '0.9rem', fontWeight: 500 } }} />
                   </ListItem>
@@ -421,8 +517,8 @@ function Navbar({ isAuthenticated, user, setIsAuthenticated, setUser }) {
             <Divider sx={{ my: 1 }} />
 
             {isAuthenticated && (
-              <ListItem button onClick={handleLogout} sx={{ borderRadius: 2, color: '#E74C3C', '&:hover': { bgcolor: '#FCE4EC' } }}>
-                <ListItemText primary="Keluar" sx={{ primaryTypographyProps: { fontWeight: 600 } }} />
+              <ListItem button onClick={handleLogout} sx={{ borderRadius: 2, color: '#E74C3C' }}>
+                <ListItemText primary="Log out" sx={{ primaryTypographyProps: { fontWeight: 600 } }} />
               </ListItem>
             )}
           </List>
