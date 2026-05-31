@@ -1,4 +1,4 @@
-// ArtistList.js - Professional Layout
+// src/components/ArtistList.js
 import React, { useState, useEffect } from 'react';
 import { Link } from 'react-router-dom';
 import {
@@ -15,7 +15,6 @@ import {
   InputAdornment,
   Button,
   Divider,
-  IconButton,
   Stack,
   Pagination,
   Skeleton,
@@ -23,29 +22,12 @@ import {
   Paper
 } from '@mui/material';
 import SearchIcon from '@mui/icons-material/Search';
-import FavoriteBorderIcon from '@mui/icons-material/FavoriteBorder';
-import ChatIcon from '@mui/icons-material/Chat';
 import VerifiedIcon from '@mui/icons-material/Verified';
 import FilterListIcon from '@mui/icons-material/FilterList';
 import SortIcon from '@mui/icons-material/Sort';
 import { cartService } from '../services/RealTimeDataService';
+import { getArtistData, getArtistReviews, getArtistCommissions } from '../services/ArtistDataService';
 
-// ==========================================
-// GET REAL DATA FROM LOCALSTORAGE
-// ==========================================
-const getArtistCommissions = () => {
-  const saved = localStorage.getItem('creartsi_artist_commissions');
-  return saved ? JSON.parse(saved) : [];
-};
-
-const getArtists = () => {
-  const saved = localStorage.getItem('kreartsi_artists');
-  return saved ? JSON.parse(saved) : [];
-};
-
-// ==========================================
-// MAIN COMPONENT
-// ==========================================
 function ArtistList() {
   const [commissions, setCommissions] = useState([]);
   const [filteredCommissions, setFilteredCommissions] = useState([]);
@@ -67,25 +49,13 @@ function ArtistList() {
     { value: 'Animation + Videos', label: 'Animation + Videos' }
   ];
 
-  const handleSaveToCart = (e, commission) => {
-    e.stopPropagation(); // Biar tidak membuka detail
-    const currentUser = JSON.parse(localStorage.getItem('user'));
-
-    if (!currentUser) {
-      alert('Please login first to save to cart');
-      return;
-    }
-
-    cartService.addToCart(commission, currentUser.id);
-    alert(`Added "${commission.title}" to your cart!`);
-  };
-
   const sortOptions = [
     { value: 'relevant', label: 'Most Relevant' },
     { value: 'latest', label: 'Latest' },
     { value: 'trending', label: 'Trending' },
     { value: 'price-low', label: 'Price: Low to High' },
-    { value: 'price-high', label: 'Price: High to Low' }
+    { value: 'price-high', label: 'Price: High to Low' },
+    { value: 'rating', label: 'Highest Rated' }
   ];
 
   useEffect(() => {
@@ -98,43 +68,53 @@ function ArtistList() {
 
   const loadData = () => {
     setLoading(true);
-    const allCommissions = getArtistCommissions();
-    const artists = getArtists();
 
-    const openCommissions = allCommissions.filter(comm => comm.isOpen === true);
+    try {
+      const allCommissions = getArtistCommissions();
+      const openCommissions = allCommissions.filter(comm => comm.isOpen === true);
 
-    const items = openCommissions.map(comm => {
-      const artist = artists.find(a => a.name === comm.artistName) || {
-        name: comm.artistName || 'Artist',
-        avatar: 'https://i.pravatar.cc/150?img=1',
-        rating: 4.8,
-        reviews: 24
-      };
+      const items = openCommissions.map(comm => {
+        const artistName = comm.artistName || 'Artist';
+        const artistData = getArtistData(artistName);
+        const reviewData = getArtistReviews(comm.artistId, artistName);
 
-      return {
-        id: comm.id,
-        title: comm.title || 'Commission Package',
-        artistName: artist.name,
-        artistAvatar: artist.avatar,
-        artistRating: artist.rating || 4.8,
-        artistReviews: artist.reviews || 0,
-        category: comm.category || 'General',
-        price: comm.priceFrom || 0,
-        coverImage: comm.coverImage || 'https://images.unsplash.com/photo-1618005182384-a83a8bd57fbe?w=600',
-        tags: comm.includes || [],
-        slotsLeft: comm.slotsLeft || comm.slots || 5,
-        createdAt: comm.createdAt || new Date().toISOString()
-      };
-    });
+        const finalRating = (reviewData.totalReviews > 0 && reviewData.rating > 0)
+          ? reviewData.rating
+          : (artistData.rating || 0);
+        const finalReviews = (reviewData.totalReviews > 0)
+          ? reviewData.totalReviews
+          : (artistData.totalReviews || 0);
 
-    setCommissions(items);
-    setLoading(false);
+        return {
+          id: comm.id,
+          title: comm.title || 'Commission Package',
+          artistName: artistData.name,
+          artistUsername: artistData.username,
+          artistAvatar: artistData.avatar,
+          artistRating: finalRating,
+          artistReviews: finalReviews,
+          isVerified: artistData.isVerified,
+          category: comm.category || 'General',
+          price: comm.priceFrom || 0,
+          coverImage: comm.coverImage || 'https://images.unsplash.com/photo-1618005182384-a83a8bd57fbe?w=600',
+          tags: comm.includes || [],
+          slotsLeft: comm.slotsLeft || comm.slots || 5,
+          createdAt: comm.createdAt || new Date().toISOString()
+        };
+      });
+
+      setCommissions(items);
+    } catch (error) {
+      console.error('Error loading commissions:', error);
+      setCommissions([]);
+    } finally {
+      setLoading(false);
+    }
   };
 
   const filterAndSort = () => {
     let result = [...commissions];
 
-    // Search filter
     if (searchTerm) {
       result = result.filter(item =>
         item.title.toLowerCase().includes(searchTerm.toLowerCase()) ||
@@ -142,24 +122,25 @@ function ArtistList() {
       );
     }
 
-    // Category filter
     if (selectedCategory) {
       result = result.filter(item => item.category === selectedCategory);
     }
 
-    // Sorting
     switch (sortBy) {
       case 'latest':
         result.sort((a, b) => new Date(b.createdAt) - new Date(a.createdAt));
         break;
       case 'trending':
-        result.sort((a, b) => (b.artistRating || 0) - (a.artistRating || 0));
+        result.sort((a, b) => (b.artistReviews || 0) - (a.artistReviews || 0));
         break;
       case 'price-low':
         result.sort((a, b) => (a.price || 0) - (b.price || 0));
         break;
       case 'price-high':
         result.sort((a, b) => (b.price || 0) - (a.price || 0));
+        break;
+      case 'rating':
+        result.sort((a, b) => (b.artistRating || 0) - (a.artistRating || 0));
         break;
       default:
         break;
@@ -177,7 +158,6 @@ function ArtistList() {
 
   return (
     <Box sx={{ bgcolor: '#F8FAFC', minHeight: '100vh' }}>
-      {/* HERO SECTION */}
       <Box sx={{ bgcolor: '#FFFFFF', borderBottom: '1px solid #E2E8F0', pt: 4, pb: 4 }}>
         <Container maxWidth="lg">
           <Typography variant="h3" fontWeight={800} sx={{ color: '#1A6B8A', mb: 1 }}>
@@ -189,7 +169,6 @@ function ArtistList() {
         </Container>
       </Box>
 
-      {/* FILTER BAR */}
       <Box sx={{ bgcolor: '#FFFFFF', borderBottom: '1px solid #E2E8F0', py: 2 }}>
         <Container maxWidth="lg">
           <Grid container spacing={2} alignItems="center">
@@ -207,15 +186,10 @@ function ArtistList() {
                       <SearchIcon sx={{ color: '#94A3B8' }} />
                     </InputAdornment>
                   ),
-                  sx: {
-                    borderRadius: '40px',
-                    bgcolor: '#F8FAFC',
-                    '& fieldset': { borderColor: '#E2E8F0' }
-                  }
+                  sx: { borderRadius: '40px', bgcolor: '#F8FAFC', '& fieldset': { borderColor: '#E2E8F0' } }
                 }}
               />
             </Grid>
-
             <Grid item xs={12} md={3}>
               <TextField
                 select
@@ -238,7 +212,6 @@ function ArtistList() {
                 ))}
               </TextField>
             </Grid>
-
             <Grid item xs={12} md={4}>
               <TextField
                 select
@@ -265,16 +238,13 @@ function ArtistList() {
         </Container>
       </Box>
 
-      {/* MAIN CONTENT */}
       <Container maxWidth="lg" sx={{ py: 5 }}>
-        {/* RESULT COUNT */}
         <Box display="flex" justifyContent="space-between" alignItems="center" mb={3}>
           <Typography variant="body2" sx={{ color: '#64748B' }}>
             <strong>{filteredCommissions.length}</strong> commissions found
           </Typography>
         </Box>
 
-        {/* LOADING STATE */}
         {loading && (
           <Grid container spacing={3}>
             {[1, 2, 3, 4, 5, 6, 7, 8].map((i) => (
@@ -285,19 +255,13 @@ function ArtistList() {
           </Grid>
         )}
 
-        {/* EMPTY STATE */}
         {!loading && filteredCommissions.length === 0 && (
           <Paper sx={{ textAlign: 'center', py: 8, borderRadius: '24px' }}>
-            <Typography variant="h5" sx={{ color: '#94A3B8', mb: 1 }}>
-               No commissions found
-            </Typography>
-            <Typography variant="body2" sx={{ color: '#94A3B8' }}>
-              Try adjusting your search or filter to find what you're looking for
-            </Typography>
+            <Typography variant="h5" sx={{ color: '#94A3B8', mb: 1 }}>No commissions found</Typography>
+            <Typography variant="body2" sx={{ color: '#94A3B8' }}>Try adjusting your search or filter</Typography>
           </Paper>
         )}
 
-        {/* COMMISSIONS GRID */}
         {!loading && filteredCommissions.length > 0 && (
           <>
             <Grid container spacing={3}>
@@ -325,16 +289,11 @@ function ArtistList() {
                       }
                     }}
                   >
-                    {/* COVER IMAGE */}
                     <Box sx={{ position: 'relative', height: 180, overflow: 'hidden', bgcolor: '#F1F5F9' }}>
                       <img
                         src={item.coverImage}
                         alt={item.title}
-                        style={{
-                          width: '100%',
-                          height: '100%',
-                          objectFit: 'cover'
-                        }}
+                        style={{ width: '100%', height: '100%', objectFit: 'cover' }}
                       />
                       <Chip
                         label="OPEN"
@@ -350,62 +309,44 @@ function ArtistList() {
                           borderRadius: '20px'
                         }}
                       />
-                      <IconButton
-                        sx={{
-                          position: 'absolute',
-                          top: 8,
-                          right: 8,
-                          bgcolor: 'rgba(255,255,255,0.9)',
-                          width: 28,
-                          height: 28,
-                          '&:hover': { bgcolor: '#FFFFFF' }
-                        }}
-                      >
-                        <FavoriteBorderIcon sx={{ fontSize: 16, color: '#EF4444' }} />
-                      </IconButton>
                     </Box>
 
-                    {/* CONTENT */}
                     <CardContent sx={{ p: 2, flexGrow: 1 }}>
                       <Typography variant="caption" sx={{ color: '#4A9FBF', fontWeight: 600 }}>
                         {item.category}
                       </Typography>
-
                       <Typography variant="subtitle1" fontWeight={700} sx={{ mt: 0.5, mb: 1, lineHeight: 1.3, fontSize: '0.95rem' }}>
                         {item.title}
                       </Typography>
 
-                      {/* ARTIST INFO */}
                       <Stack direction="row" alignItems="center" spacing={1} sx={{ mb: 1 }}>
                         <Avatar src={item.artistAvatar} sx={{ width: 20, height: 20 }} />
                         <Typography variant="caption" fontWeight={600} sx={{ color: '#334155' }}>
                           {item.artistName}
                         </Typography>
-                        <VerifiedIcon sx={{ color: '#4A9FBF', fontSize: 12 }} />
+                        {item.isVerified && <VerifiedIcon sx={{ color: '#4A9FBF', fontSize: 12 }} />}
                       </Stack>
 
-                      {/* RATING */}
                       <Stack direction="row" alignItems="center" spacing={0.5} sx={{ mb: 1.5 }}>
-                        <Rating value={item.artistRating} precision={0.5} size="small" readOnly />
-                        <Typography variant="caption" sx={{ color: '#94A3B8' }}>
-                          ({item.artistReviews})
-                        </Typography>
+                        {item.artistRating > 0 ? (
+                          <>
+                            <Rating value={item.artistRating} precision={0.5} size="small" readOnly />
+                            <Typography variant="caption" sx={{ color: '#94A3B8' }}>({item.artistReviews})</Typography>
+                          </>
+                        ) : (
+                          <Typography variant="caption" sx={{ color: '#94A3B8' }}>⭐ No reviews yet</Typography>
+                        )}
                       </Stack>
 
-                      {/* PRICE */}
                       <Typography variant="h6" fontWeight={800} sx={{ color: '#1A6B8A' }}>
                         Rp {item.price.toLocaleString('id-ID')}
                       </Typography>
-
-                      {/* SLOTS */}
                       <Typography variant="caption" sx={{ color: '#94A3B8', display: 'block', mt: 0.5 }}>
                         {item.slotsLeft} slots available
                       </Typography>
                     </CardContent>
 
                     <Divider />
-
-                    {/* BUTTON */}
                     <Box sx={{ p: 1.5 }}>
                       <Button
                         component={Link}
@@ -430,7 +371,6 @@ function ArtistList() {
               ))}
             </Grid>
 
-            {/* PAGINATION */}
             {totalPages > 1 && (
               <Box display="flex" justifyContent="center" mt={5}>
                 <Pagination
@@ -441,10 +381,7 @@ function ArtistList() {
                   sx={{
                     '& .MuiPaginationItem-root': {
                       borderRadius: '10px',
-                      '&.Mui-selected': {
-                        bgcolor: '#4A9FBF',
-                        color: 'white'
-                      }
+                      '&.Mui-selected': { bgcolor: '#4A9FBF', color: 'white' }
                     }
                   }}
                 />

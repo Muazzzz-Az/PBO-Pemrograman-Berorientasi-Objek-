@@ -1,5 +1,5 @@
-// ProfilePage.js - Modified
-import React, { useState, useRef } from 'react';
+// src/components/ProfilePage.js
+import React, { useState, useRef, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import {
   Container,
@@ -12,17 +12,16 @@ import {
   Dialog,
   DialogTitle,
   DialogContent,
+  DialogActions,
   IconButton,
   Switch,
   Tabs,
   Tab,
-  Grid,
   Card,
   CardContent,
   Chip
 } from '@mui/material';
 
-// MENGGUNAKAN DELETEOUTLINED (DENGAN AKHIRAN 'D') SESUAI EXPORTS YANG VALID
 import {
   Edit as EditIcon,
   Close as CloseIcon,
@@ -41,9 +40,9 @@ import ArtistDashboardTab from './artist/ArtistDashboardTab';
 import ShopManager from './artist/ShopManager';
 
 const formatJoinedDate = (dateString) => {
-  if (!dateString) return 'MEI 2026';
+  if (!dateString) return 'MAY 2026';
   const date = new Date(dateString);
-  return date.toLocaleDateString('id-ID', {
+  return date.toLocaleDateString('en-US', {
     year: 'numeric',
     month: 'long'
   }).toUpperCase();
@@ -57,28 +56,49 @@ function ProfilePage({ user, setUser }) {
   const avatarInputRef = useRef(null);
   const bannerInputRef = useRef(null);
 
-  // Cek apakah user adalah artist terverifikasi
-  const isVerifiedArtist = user?.isVerified === true || user?.role === 'artist' || user?.role === 'admin';
+  // ONLY check isVerified === true - NOT role!
+  const isVerifiedArtist = user?.isVerified === true;
 
-  // State Utama Data Profil (Sinkron Luar-Dalam)
+  // Listen for user updates from other components
+  useEffect(() => {
+    const handleUserUpdate = (event) => {
+      if (event.detail && setUser) {
+        setUser(event.detail);
+      }
+    };
+
+    window.addEventListener('userUpdated', handleUserUpdate);
+    return () => window.removeEventListener('userUpdated', handleUserUpdate);
+  }, [setUser]);
+
+  // Update formData when user changes
+  useEffect(() => {
+    if (user) {
+      setFormData({
+        fullName: user.fullName || '',
+        username: user.username || '',
+        bio: user.bio || '',
+        avatarUrl: user.avatarUrl || '',
+        bannerUrl: user.bannerUrl || '',
+        links: user.links || []
+      });
+    }
+  }, [user]);
+
   const [formData, setFormData] = useState({
-    fullName: user?.fullName || 'Nailah Salmah',
-    username: user?.username || 'naiii',
-    bio: user?.bio || 'Suka coding web backend & suka main game horror hwhw. 🎨✨',
+    fullName: user?.fullName || '',
+    username: user?.username || '',
+    bio: user?.bio || '',
     avatarUrl: user?.avatarUrl || '',
     bannerUrl: user?.bannerUrl || '',
-    links: user?.links || [
-      { label: 'GitHub', url: 'https://github.com' }
-    ]
+    links: user?.links || []
   });
 
-  // State Kontrol Sementara di dalam Modal
   const [modalData, setModalData] = useState({ ...formData });
   const [linkStyle, setLinkStyle] = useState('labels');
   const [displayLocalTimeProfile, setDisplayLocalTimeProfile] = useState(true);
   const [displayLocalTimeDMs, setDisplayLocalTimeDMs] = useState(false);
 
-  // Fungsi sinkronisasi saat membuka modal edit
   const handleOpenModal = () => {
     setModalData({ ...formData });
     setOpenEditModal(true);
@@ -107,7 +127,6 @@ function ProfilePage({ user, setUser }) {
     }
   };
 
-  // Dinamisasi Fitur Tambah Link
   const handleAddLink = () => {
     setModalData({
       ...modalData,
@@ -129,12 +148,14 @@ function ProfilePage({ user, setUser }) {
   const handleSave = () => {
     setFormData({ ...modalData });
     setOpenEditModal(false);
-    if (setUser) {
-      setUser({ ...user, ...modalData });
+    if (setUser && user) {
+      const updatedUser = { ...user, ...modalData };
+      setUser(updatedUser);
+      localStorage.setItem('user', JSON.stringify(updatedUser));
+      window.dispatchEvent(new CustomEvent('userUpdated', { detail: updatedUser }));
     }
   };
 
-  // Tombol Kreator Mode
   const handleGoToCreatorMode = () => {
     setShowCreatorMode(true);
   };
@@ -143,19 +164,26 @@ function ProfilePage({ user, setUser }) {
     setShowCreatorMode(false);
   };
 
-  // Jika sedang dalam Creator Mode
+  if (!user) {
+    return (
+      <Box sx={{ minHeight: '100vh', bgcolor: '#F0F9FF', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+        <Typography>Loading...</Typography>
+      </Box>
+    );
+  }
+
+  // Creator Mode - ONLY for verified artists
   if (showCreatorMode && isVerifiedArtist) {
     return (
       <Box sx={{ minHeight: '100vh', bgcolor: '#F0F9FF', pb: 8 }}>
         <Container maxWidth="lg" sx={{ pt: 4 }}>
-          {/* Header Creator Dashboard */}
           <Box sx={{ mb: 4, display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
             <Box>
               <Typography variant="h4" sx={{ fontWeight: 800, color: '#1A6B8A' }}>
                 🎨 Creator Studio
               </Typography>
               <Typography variant="body2" sx={{ color: '#4A9FBF' }}>
-                Kelola portofolio, komisi, dan toko karyamu
+                Manage your portfolio, commissions, and shop
               </Typography>
             </Box>
             <Button
@@ -163,11 +191,10 @@ function ProfilePage({ user, setUser }) {
               onClick={handleBackToProfile}
               sx={{ borderColor: '#4A9FBF', color: '#4A9FBF', borderRadius: '20px' }}
             >
-              ← Kembali ke Profil
+              ← Back to Profile
             </Button>
           </Box>
 
-          {/* Tabs untuk Creator Mode */}
           <Card sx={{ borderRadius: '20px', overflow: 'hidden' }}>
             <Tabs
               value={activeCreatorTab}
@@ -180,8 +207,8 @@ function ProfilePage({ user, setUser }) {
                 '& .MuiTabs-indicator': { bgcolor: '#4A9FBF' }
               }}
             >
-              <Tab icon={<PaletteIcon />} iconPosition="start" label="Portofolio & Komisi" />
-              <Tab icon={<StoreIcon />} iconPosition="start" label="Toko / Shop" />
+              <Tab icon={<PaletteIcon />} iconPosition="start" label="Portfolio & Commissions" />
+              <Tab icon={<StoreIcon />} iconPosition="start" label="Shop" />
               <Tab icon={<DashboardIcon />} iconPosition="start" label="Analytics" />
             </Tabs>
 
@@ -191,7 +218,7 @@ function ProfilePage({ user, setUser }) {
               {activeCreatorTab === 2 && (
                 <Box textAlign="center" py={8}>
                   <Typography variant="body1" color="text.secondary">
-                    📊 Analytics akan hadir segera! Statistik penjualan dan performa karyamu.
+                    📊 Analytics coming soon! Sales statistics and performance metrics.
                   </Typography>
                 </Box>
               )}
@@ -202,10 +229,9 @@ function ProfilePage({ user, setUser }) {
     );
   }
 
+  // Normal Profile View
   return (
     <Box sx={{ minHeight: '100vh', bgcolor: '#F0F9FF', pb: 8 }}>
-
-      {/* ==================== DISPLAY UTAMA HALAMAN PROFIL ==================== */}
       <Box
         sx={{
           height: '280px',
@@ -223,7 +249,6 @@ function ProfilePage({ user, setUser }) {
         maxWidth="md"
         sx={{ position: 'relative', zIndex: 2, textAlign: 'center', display: 'flex', flexDirection: 'column', alignItems: 'center', mt: '-85px' }}
       >
-        {/* Avatar Base */}
         <Box sx={{ mb: 3, display: 'inline-block', position: 'relative' }}>
           <Avatar
             src={formData.avatarUrl}
@@ -237,9 +262,8 @@ function ProfilePage({ user, setUser }) {
               fontWeight: 'bold'
             }}
           >
-            {!formData.avatarUrl && formData.fullName.charAt(0).toUpperCase()}
+            {!formData.avatarUrl && formData.fullName?.charAt(0).toUpperCase()}
           </Avatar>
-          {/* Badge Verified untuk Artist */}
           {isVerifiedArtist && (
             <Chip
               label="✓ Verified Artist"
@@ -265,26 +289,24 @@ function ProfilePage({ user, setUser }) {
             @{formData.username}
           </Typography>
 
-          {/* Menampilkan Jam Lokal jika Sakelar Switch Aktif */}
           {displayLocalTimeProfile && (
             <Typography variant="body2" sx={{ color: '#64748B', fontWeight: 500, mb: 2, bgcolor: '#E0F2FE', display: 'inline-block', px: 2, py: 0.5, borderRadius: '12px' }}>
-              🕒 Waktu Lokal: {new Date().toLocaleTimeString('id-ID', { hour: '2-digit', minute: '2-digit' })} WIB
+              🕒 Local Time: {new Date().toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit' })}
             </Typography>
           )}
 
           <Divider sx={{ mb: 3, width: '60px', mx: 'auto', height: '4px', bgcolor: '#4A9FBF', borderRadius: '2px', opacity: 0.4 }} />
 
           <Typography variant="body1" sx={{ color: '#475569', lineHeight: 1.8, mb: 3, fontSize: '1.05rem', whiteSpace: 'pre-line' }}>
-            {formData.bio}
+            {formData.bio || 'No bio yet'}
           </Typography>
 
-          {/* RENDER LINKS DINAMIS */}
-          {formData.links.length > 0 && (
+          {formData.links && formData.links.length > 0 && (
             <Box display="flex" justifyContent="center" flexWrap="wrap" gap={1.5} sx={{ mb: 4 }}>
               {formData.links.map((link, idx) => (
                 <Button
                   key={idx}
-                  href={link.url.startsWith('http') ? link.url : `https://${link.url}`}
+                  href={link.url?.startsWith('http') ? link.url : `https://${link.url}`}
                   target="_blank"
                   rel="noopener noreferrer"
                   variant="contained"
@@ -309,10 +331,9 @@ function ProfilePage({ user, setUser }) {
           )}
 
           <Typography variant="caption" sx={{ color: '#94A3B8', fontWeight: 600, display: 'block', mb: 4, letterSpacing: '0.5px' }}>
-            BERGABUNG SEJAK {formatJoinedDate(user?.createdAt)}
+            JOINED SINCE {formatJoinedDate(user?.createdAt)}
           </Typography>
 
-          {/* ===== BUTTON ACTION ===== */}
           <Box display="flex" gap={2} justifyContent="center">
             <Button
               startIcon={<EditIcon />}
@@ -329,10 +350,10 @@ function ProfilePage({ user, setUser }) {
                 '&:hover': { borderWidth: '2px', borderColor: '#1A6B8A', bgcolor: 'rgba(74, 159, 191, 0.08)' }
               }}
             >
-              Edit Profil
+              Edit Profile
             </Button>
 
-            {/* TOMBOL KREATOR - Muncul hanya jika user adalah verified artist */}
+            {/* Creator Mode button - ONLY for verified artists (isVerified === true) */}
             {isVerifiedArtist && (
               <Button
                 startIcon={<DashboardIcon />}
@@ -347,14 +368,14 @@ function ProfilePage({ user, setUser }) {
                   '&:hover': { bgcolor: '#0E4B63' }
                 }}
               >
-                🎨 Kreator Mode
+                🎨 Creator Mode
               </Button>
             )}
           </Box>
         </Box>
       </Container>
 
-      {/* ==================== MODAL WINDOW ==================== */}
+      {/* Edit Modal */}
       <Dialog
         open={openEditModal}
         onClose={() => setOpenEditModal(false)}
@@ -370,28 +391,25 @@ function ProfilePage({ user, setUser }) {
           }
         }}
       >
-        {/* Header Modal */}
         <DialogTitle sx={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', px: 2.5, py: 2, borderBottom: '1px solid #E0F2FE' }}>
           <IconButton onClick={() => setOpenEditModal(false)} sx={{ color: '#4A9FBF', p: 0.5 }}>
             <CloseIcon />
           </IconButton>
           <Typography variant="subtitle1" sx={{ fontWeight: 800, fontSize: '1.1rem', color: '#1A6B8A' }}>
-            Edit profile
+            Edit Profile
           </Typography>
           <Button
             onClick={handleSave}
-            sx={{ color: '#4A9FBF', fontWeight: 700, textTransform: 'none', fontSize: '0.95rem', p: 0, '&:hover': { bgcolor: 'transparent', color: '#1A6B8A' } }}
+            sx={{ color: '#4A9FBF', fontWeight: 700, textTransform: 'none', fontSize: '0.95rem', p: 0 }}
           >
             Done
           </Button>
         </DialogTitle>
 
-        {/* Isi Form Konten */}
         <DialogContent sx={{ px: 2.5, py: 3, display: 'flex', flexDirection: 'column', gap: 3, bgcolor: '#F8FAFC' }}>
-
-          {/* Box Media (Banner Mini Pastel + Avatar) */}
+          {/* Photo & Cover */}
           <Box display="flex" flexDirection="column" gap={1}>
-            <Typography variant="body2" sx={{ fontWeight: 700, color: '#1A6B8A', fontSize: '0.85rem' }}>Foto & Sampul</Typography>
+            <Typography variant="body2" sx={{ fontWeight: 700, color: '#1A6B8A', fontSize: '0.85rem' }}>Photo & Cover</Typography>
 
             <Box
               sx={{
@@ -426,7 +444,7 @@ function ProfilePage({ user, setUser }) {
                   src={modalData.avatarUrl}
                   sx={{ width: 64, height: 64, border: '4px solid #FFFFFF', bgcolor: '#4A9FBF', boxShadow: '0 4px 10px rgba(0,0,0,0.1)' }}
                 >
-                  {!modalData.avatarUrl && modalData.fullName.charAt(0).toUpperCase()}
+                  {!modalData.avatarUrl && modalData.fullName?.charAt(0).toUpperCase()}
                 </Avatar>
                 <Box
                   className="avatar-modal-overlay"
@@ -447,7 +465,7 @@ function ProfilePage({ user, setUser }) {
                 onClick={() => bannerInputRef.current.click()}
                 sx={{ color: '#4A9FBF', border: '1px solid #BAE6FD', borderRadius: '8px', textTransform: 'none', fontSize: '0.75rem', px: 1.5, bgcolor: '#FFFFFF' }}
               >
-                Ubah Sampul
+                Change Cover
               </Button>
             </Box>
           </Box>
@@ -455,7 +473,7 @@ function ProfilePage({ user, setUser }) {
           <input type="file" ref={avatarInputRef} style={{ display: 'none' }} accept="image/*" onChange={handleAvatarChange} />
           <input type="file" ref={bannerInputRef} style={{ display: 'none' }} accept="image/*" onChange={handleBannerChange} />
 
-          {/* Input Username */}
+          {/* Username */}
           <Box display="flex" flexDirection="column" gap={1}>
             <Typography variant="body2" sx={{ fontWeight: 700, color: '#1A6B8A', fontSize: '0.85rem' }}>Username</Typography>
             <TextField
@@ -479,12 +497,12 @@ function ProfilePage({ user, setUser }) {
             <Box display="flex" gap={1} sx={{ mt: 0.5 }}>
               <InfoOutlinedIcon sx={{ color: '#4A9FBF', fontSize: '1rem', mt: 0.2, flexShrink: 0 }} />
               <Typography variant="caption" sx={{ color: '#64748B', lineHeight: 1.4, fontSize: '0.75rem' }}>
-                Mengubah username juga akan memperbarui URL profilmu.
+                Changing your username will also update your profile URL.
               </Typography>
             </Box>
           </Box>
 
-          {/* Input Display Name */}
+          {/* Display Name */}
           <Box display="flex" flexDirection="column" gap={1}>
             <Typography variant="body2" sx={{ fontWeight: 700, color: '#1A6B8A', fontSize: '0.85rem' }}>Display name</Typography>
             <TextField
@@ -507,7 +525,7 @@ function ProfilePage({ user, setUser }) {
             />
           </Box>
 
-          {/* Input Bio */}
+          {/* Bio */}
           <Box display="flex" flexDirection="column" gap={1}>
             <Typography variant="body2" sx={{ fontWeight: 700, color: '#1A6B8A', fontSize: '0.85rem' }}>Bio</Typography>
             <TextField
@@ -532,11 +550,10 @@ function ProfilePage({ user, setUser }) {
             />
           </Box>
 
-          {/* SECTION LINKS DINAMIS & AKTIF */}
+          {/* Links */}
           <Box display="flex" flexDirection="column" gap={1}>
             <Typography variant="body2" sx={{ fontWeight: 700, color: '#1A6B8A', fontSize: '0.85rem' }}>Links</Typography>
 
-            {/* Toggle Tipe Tampilan */}
             <Box sx={{ display: 'flex', bgcolor: '#F1F5F9', borderRadius: '24px', p: 0.5, border: '1px solid #E2E8F0', mb: 1 }}>
               <Button
                 fullWidth
@@ -545,8 +562,7 @@ function ProfilePage({ user, setUser }) {
                   borderRadius: '20px', textTransform: 'none', fontSize: '0.82rem', fontWeight: 600,
                   color: linkStyle === 'icon' ? '#1A6B8A' : '#64748B',
                   bgcolor: linkStyle === 'icon' ? '#FFFFFF' : 'transparent',
-                  boxShadow: linkStyle === 'icon' ? '0 2px 6px rgba(0,0,0,0.05)' : 'none',
-                  '&:hover': { bgcolor: linkStyle === 'icon' ? '#FFFFFF' : 'transparent' }
+                  boxShadow: linkStyle === 'icon' ? '0 2px 6px rgba(0,0,0,0.05)' : 'none'
                 }}
               >
                 Icon only
@@ -558,21 +574,19 @@ function ProfilePage({ user, setUser }) {
                   borderRadius: '20px', textTransform: 'none', fontSize: '0.82rem', fontWeight: 600,
                   color: linkStyle === 'labels' ? '#1A6B8A' : '#64748B',
                   bgcolor: linkStyle === 'labels' ? '#FFFFFF' : 'transparent',
-                  boxShadow: linkStyle === 'labels' ? '0 2px 6px rgba(0,0,0,0.05)' : 'none',
-                  '&:hover': { bgcolor: linkStyle === 'labels' ? '#FFFFFF' : 'transparent' }
+                  boxShadow: linkStyle === 'labels' ? '0 2px 6px rgba(0,0,0,0.05)' : 'none'
                 }}
               >
                 Display labels
               </Button>
             </Box>
 
-            {/* Loop Form Pengisian List Link */}
-            {modalData.links.map((link, index) => (
+            {modalData.links && modalData.links.map((link, index) => (
               <Box key={index} display="flex" gap={1} alignItems="center" sx={{ mb: 1, bgcolor: '#FFFFFF', p: 1.5, borderRadius: '8px', border: '1px solid #E2E8F0' }}>
                 <Box display="flex" flexDirection="column" gap={1} flexGrow={1}>
                   <TextField
                     size="small"
-                    label="Nama Platform / Label"
+                    label="Platform Name / Label"
                     value={link.label}
                     onChange={(e) => handleLinkChange(index, 'label', e.target.value)}
                     sx={{ '& .MuiOutlinedInput-root': { fontSize: '0.8rem' } }}
@@ -604,11 +618,11 @@ function ProfilePage({ user, setUser }) {
             </Button>
           </Box>
 
-          {/* SECTION LOCAL TIME AKTIF */}
+          {/* Local Time */}
           <Box display="flex" flexDirection="column" gap={1}>
             <Typography variant="body2" sx={{ fontWeight: 700, color: '#1A6B8A', fontSize: '0.85rem' }}>Local time</Typography>
             <Typography variant="caption" sx={{ color: '#64748B', lineHeight: 1.4, fontSize: '0.75rem', mb: 0.5 }}>
-              Menampilkan "Waktu lokal" secara publik membantu orang lain memperkirakan waktu balasan pesanmu.
+              Showing "Local time" publicly helps others estimate your response time.
             </Typography>
 
             <Box sx={{ display: 'flex', flexDirection: 'column', bgcolor: '#FFFFFF', borderRadius: '14px', px: 2, py: 0.5, border: '1px solid #E2E8F0' }}>
@@ -637,10 +651,13 @@ function ProfilePage({ user, setUser }) {
               </Box>
             </Box>
           </Box>
-
         </DialogContent>
-      </Dialog>
 
+        <DialogActions sx={{ p: 3, borderTop: '1px solid #E2E8F0' }}>
+          <Button onClick={() => setOpenEditModal(false)} color="error" variant="outlined">Cancel</Button>
+          <Button onClick={handleSave} variant="contained" sx={{ bgcolor: '#4A9FBF' }}>Save</Button>
+        </DialogActions>
+      </Dialog>
     </Box>
   );
 }
