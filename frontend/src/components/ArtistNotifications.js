@@ -24,7 +24,7 @@ import {
   Paper
 } from '@mui/material';
 import {
-  NotificationsIcon,
+  Notifications as NotificationsIcon,
   Close as CloseIcon,
   ShoppingBag as ShoppingBagIcon,
   CheckCircle as CheckCircleIcon,

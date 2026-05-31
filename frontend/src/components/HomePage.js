@@ -14,7 +14,7 @@ import ChatIcon from '@mui/icons-material/Chat';
 import WhatshotIcon from '@mui/icons-material/Whatshot';
 import ShuffleIcon from '@mui/icons-material/Shuffle';
 import AccessTimeIcon from '@mui/icons-material/AccessTime';
-import { cartService, reviewService, useRealTimeData } from '../services/RealTimeDataService';
+import { cartService, reviewService } from '../services/RealTimeDataService';
 
 import {
   Palette, Layers, Create, AutoAwesome,

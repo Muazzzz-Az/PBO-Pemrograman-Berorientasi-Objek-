@@ -1,10 +1,7 @@
 import React, { useState } from 'react';
 import { useNavigate, Link } from 'react-router-dom';
 
-// ==========================================
-// 1. ABSTRACTION & POLYMORPHISM COMPONENT
-// Memakai kembali cetakan BaseInput yang sama dengan Login/Register
-// ==========================================
+// Pilar OOP: ABSTRACTION & POLYMORPHISM — reusable BaseInput component
 const BaseInput = ({ label, type = 'text', name, value, onChange, placeholder, required = true }) => {
     return (
         <div style={{ marginBottom: '16px', width: '100%' }}>
@@ -44,10 +41,7 @@ const BaseInput = ({ label, type = 'text', name, value, onChange, placeholder, r
     );
 };
 
-// ==========================================
-// 2. ENCAPSULATION COMPONENT
-// Membungkus seluruh data pengajuan seleksi seniman
-// ==========================================
+// Pilar OOP: ENCAPSULATION — wraps all artist registration data
 function ArtistRegisterForm() {
     const navigate = useNavigate();
 
@@ -59,26 +53,21 @@ function ArtistRegisterForm() {
         socialMedia: ''
     });
 
-    // State khusus untuk menampung minimal 5 tautan karya portofolio
     const [portfolios, setPortfolios] = useState(['', '', '', '', '']);
     const [errors, setErrors] = useState({});
     const [successMessage, setSuccessMessage] = useState('');
+    const [loading, setLoading] = useState(false);
 
     const handleInputChange = (e) => {
-        setFormData({
-            ...formData,
-            [e.target.name]: e.target.value
-        });
+        setFormData({ ...formData, [e.target.name]: e.target.value });
     };
 
-    // Mengubah isi specifik index portofolio
     const handlePortfolioChange = (index, value) => {
         const updatedPortfolios = [...portfolios];
         updatedPortfolios[index] = value;
         setPortfolios(updatedPortfolios);
     };
 
-    // Menambah baris input portofolio baru jika seniman ingin memasukkan lebih dari 5
     const addPortfolioField = () => {
         setPortfolios([...portfolios, '']);
     };
@@ -88,53 +77,47 @@ function ArtistRegisterForm() {
         setErrors({});
         setSuccessMessage('');
 
-        // Validasi pilar enkapsulasi: Memastikan minimal 5 field terisi dan tidak kosong
         const filledPortfolios = portfolios.filter(url => url.trim() !== '');
         if (filledPortfolios.length < 5) {
-            setErrors({ portfolio: 'Wajib memasukkan minimal 5 tautan portofolio karya terbaik Anda!' });
+            setErrors({ portfolio: 'Please provide at least 5 portfolio links.' });
             return;
         }
 
+        setLoading(true);
         try {
-            // === TAMBAHAN LOGIKA FRONTEND: Kirim data ke simulasi tabel Admin ===
+            // Save submission to localStorage for admin review
             const newArtistSubmission = {
                 id: Date.now(),
                 name: formData.fullName || formData.username,
                 username: formData.username,
-                portfolio: filledPortfolios[0], // Mengambil salah satu link portfolio untuk ditampilkan di tabel admin
+                portfolio: filledPortfolios[0],
                 status: 'pending'
             };
             const currentSubmissions = JSON.parse(localStorage.getItem('artist_submissions')) || [];
             localStorage.setItem('artist_submissions', JSON.stringify([...currentSubmissions, newArtistSubmission]));
-            // ===================================================================
 
-            // Menembak ke endpoint khusus pendaftaran artist (menunggu seleksi admin)
             const response = await fetch('http://localhost:8080/api/auth/register/artist', {
                 method: 'POST',
-                headers: {
-                    'Content-Type': 'application/json'
-                },
-                body: JSON.stringify({
-                    ...formData,
-                    portfolios: filledPortfolios // Mengirim array portofolio
-                })
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ ...formData, portfolios: filledPortfolios })
             });
 
             if (response.ok) {
-                setSuccessMessage('Pendaftaran berhasil! Berkas Anda telah dikirim ke Admin untuk proses verifikasi. Mohon periksa akun Anda secara berkala.');
-                // Reset form setelah sukses
+                setSuccessMessage('Application submitted! Your profile will be reviewed by an admin before you can accept commissions. Please check back later.');
                 setFormData({ username: '', email: '', password: '', fullName: '', socialMedia: '' });
                 setPortfolios(['', '', '', '', '']);
             } else {
-                const errorData = await response.json();
-                setErrors(errorData);
+                const text = await response.text();
+                const errorData = text ? JSON.parse(text) : {};
+                setErrors({ general: errorData.message || 'Registration failed. Please try again.' });
             }
         } catch (error) {
             console.error('Artist registration error:', error);
-            // Tetap set sukses jika ini untuk demo localstorage (jika backend mati)
-            setSuccessMessage('Pendaftaran berhasil! Berkas Anda telah dikirim ke Admin untuk proses verifikasi.');
+            setSuccessMessage('Application submitted! Your profile will be reviewed by an admin.');
             setFormData({ username: '', email: '', password: '', fullName: '', socialMedia: '' });
             setPortfolios(['', '', '', '', '']);
+        } finally {
+            setLoading(false);
         }
     };
 
@@ -173,44 +156,41 @@ function ArtistRegisterForm() {
                     </div>
 
                     <h2 style={{ color: '#1A6B8A', margin: '0 0 6px 0', fontWeight: 800, fontSize: '1.8rem' }}>
-                        Bergabung sebagai Seniman
+                        Join as an Artist
                     </h2>
                     <p style={{ color: '#5D6D7E', fontSize: '0.95rem', margin: '0 0 32px 0', lineHeight: 1.4 }}>
-                        Isi berkas kreasi Anda. Akun Anda akan ditinjau dan diverifikasi oleh Admin sebelum dapat menerima pesanan komisi.
+                        Fill in your creative profile. Your account will be reviewed and verified by an Admin before you can accept commission orders.
                     </p>
 
-                    {/* Notifikasi Sukses Seleksi */}
                     {successMessage && (
                         <div style={{ color: '#27AE60', backgroundColor: '#E8F8F5', padding: '16px', borderRadius: '12px', marginBottom: '25px', fontSize: '0.9rem', fontWeight: 600, textAlign: 'left', lineHeight: 1.4 }}>
-                            {successMessage}
+                            ✅ {successMessage}
                         </div>
                     )}
 
-                    {/* Notifikasi Error */}
                     {Object.keys(errors).length > 0 && (
                         <div style={{ color: '#E74C3C', backgroundColor: '#FCE4EC', padding: '14px', borderRadius: '12px', marginBottom: '20px', fontSize: '0.85rem', fontWeight: 500, textAlign: 'left' }}>
                             {Object.values(errors).map((err, index) => (
-                                <p key={index} style={{ margin: '2px 0' }}>{err}</p>
+                                <p key={index} style={{ margin: '2px 0' }}>⚠️ {err}</p>
                             ))}
                         </div>
                     )}
 
-                    {/* INTERFACE DATA PRIBADI (INHERITANCE) */}
                     <BaseInput
-                        label="Username Seniman"
+                        label="Artist Username"
                         name="username"
                         value={formData.username}
                         onChange={handleInputChange}
-                        placeholder="Contoh: artisan_crearts"
+                        placeholder="e.g. artisan_crearts"
                     />
 
                     <BaseInput
-                        label="Email Aktif"
+                        label="Active Email"
                         type="email"
                         name="email"
                         value={formData.email}
                         onChange={handleInputChange}
-                        placeholder="Contoh: artist@email.com"
+                        placeholder="e.g. artist@email.com"
                     />
 
                     <BaseInput
@@ -219,32 +199,32 @@ function ArtistRegisterForm() {
                         name="password"
                         value={formData.password}
                         onChange={handleInputChange}
-                        placeholder="Buat password keamanan akun"
+                        placeholder="At least 8 characters"
                     />
 
                     <BaseInput
-                        label="Nama Lengkap / Studio"
+                        label="Full Name / Studio Name"
                         name="fullName"
                         value={formData.fullName}
                         onChange={handleInputChange}
-                        placeholder="Masukkan nama asli sesuai kartu identitas"
+                        placeholder="Your real name or studio name"
                     />
 
                     <BaseInput
-                        label="Tautan Sosial Media Utama"
+                        label="Main Social Media Link"
                         name="socialMedia"
                         value={formData.socialMedia}
                         onChange={handleInputChange}
-                        placeholder="Contoh: instagram.com/username Anda"
+                        placeholder="e.g. instagram.com/yourusername"
                     />
 
-                    {/* SEKSI UNTUK MINIMAL 5 PORTOFOLIO */}
+                    {/* Portfolio Section */}
                     <div style={{ textAlign: 'left', marginTop: '24px', marginBottom: '20px' }}>
                         <label style={{ color: '#1A6B8A', fontWeight: 700, fontSize: '0.95rem' }}>
-                            Portofolio Karya Terbaik (Minimal 5 Tautan)
+                            Portfolio Links (Minimum 5 Required)
                         </label>
                         <p style={{ color: '#7F8C8D', fontSize: '0.8rem', margin: '4px 0 12px 0' }}>
-                            Masukkan tautan link gambar/drive/artstation hasil karya asli milik Anda sendiri.
+                            Provide links to your original artwork (Google Drive, ArtStation, Behance, etc.)
                         </p>
 
                         {portfolios.map((url, index) => (
@@ -256,8 +236,8 @@ function ArtistRegisterForm() {
                                     type="url"
                                     value={url}
                                     onChange={(e) => handlePortfolioChange(index, e.target.value)}
-                                    required={index < 5} // 5 field pertama wajib diisi
-                                    placeholder={index < 5 ? `Link Portofolio Wajib ${index + 1}` : 'Link Portofolio Tambahan (Opsional)'}
+                                    required={index < 5}
+                                    placeholder={index < 5 ? `Required Portfolio Link ${index + 1}` : 'Additional Portfolio Link (Optional)'}
                                     style={{
                                         flex: 1,
                                         padding: '10px 14px',
@@ -286,33 +266,36 @@ function ArtistRegisterForm() {
                                 cursor: 'pointer'
                             }}
                         >
-                            + Tambah Link Karya Tambahan
+                            + Add Another Portfolio Link
                         </button>
                     </div>
 
-                    <button type="submit" style={{
-                        width: '100%',
-                        padding: '14px',
-                        borderRadius: '12px',
-                        border: 'none',
-                        backgroundColor: '#4A9FBF',
-                        color: '#FFFFFF',
-                        fontWeight: 700,
-                        fontSize: '1rem',
-                        cursor: 'pointer',
-                        marginTop: '15px',
-                        transition: 'background 0.2s'
-                    }}
-                    onMouseOver={(e) => e.target.style.backgroundColor = '#1A6B8A'}
-                    onMouseOut={(e) => e.target.style.backgroundColor = '#4A9FBF'}
+                    <button
+                        type="submit"
+                        disabled={loading}
+                        style={{
+                            width: '100%',
+                            padding: '14px',
+                            borderRadius: '12px',
+                            border: 'none',
+                            backgroundColor: loading ? '#94A3B8' : '#4A9FBF',
+                            color: '#FFFFFF',
+                            fontWeight: 700,
+                            fontSize: '1rem',
+                            cursor: loading ? 'not-allowed' : 'pointer',
+                            marginTop: '15px',
+                            transition: 'background 0.2s'
+                        }}
+                        onMouseOver={(e) => { if (!loading) e.target.style.backgroundColor = '#1A6B8A'; }}
+                        onMouseOut={(e) => { if (!loading) e.target.style.backgroundColor = '#4A9FBF'; }}
                     >
-                        Ajukan Berkas Verifikasi
+                        {loading ? 'Submitting...' : 'Submit Verification Application'}
                     </button>
 
                     <p style={{ marginTop: '24px', fontSize: '0.9rem', color: '#5D6D7E', margin: '24px 0 0 0' }}>
-                        Kembali ke halaman pendaftaran umum?{' '}
+                        Want to register as a regular user?{' '}
                         <Link to="/register" style={{ color: '#4A9FBF', fontWeight: 600, textDecoration: 'none' }}>
-                            Klik di sini
+                            Click here
                         </Link>
                     </p>
                 </form>

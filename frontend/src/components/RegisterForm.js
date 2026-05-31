@@ -2,12 +2,12 @@
 import React, { useState } from 'react';
 import { useNavigate, Link } from 'react-router-dom';
 
-const BaseInput = ({ label, type = 'text', name, value, onChange, placeholder, required = true }) => {
+const BaseInput = ({ label, type = 'text', name, value, onChange, placeholder, required = true, error }) => {
     return (
         <div style={{ marginBottom: '16px', width: '100%' }}>
             <label style={{
                 display: 'block',
-                color: '#1A6B8A',
+                color: error ? '#E74C3C' : '#1A6B8A',
                 fontWeight: 600,
                 fontSize: '0.9rem',
                 marginBottom: '6px',
@@ -26,17 +26,22 @@ const BaseInput = ({ label, type = 'text', name, value, onChange, placeholder, r
                     width: '100%',
                     padding: '12px 16px',
                     borderRadius: '12px',
-                    border: '1px solid rgba(74, 159, 191, 0.25)',
+                    border: `1px solid ${error ? '#E74C3C' : 'rgba(74, 159, 191, 0.25)'}`,
                     outline: 'none',
                     fontSize: '0.95rem',
-                    backgroundColor: '#F2F7F9',
+                    backgroundColor: error ? '#FFF5F5' : '#F2F7F9',
                     color: '#2C3E50',
                     boxSizing: 'border-box',
                     transition: 'border-color 0.2s'
                 }}
-                onFocus={(e) => e.target.style.borderColor = '#4A9FBF'}
-                onBlur={(e) => e.target.style.borderColor = 'rgba(74, 159, 191, 0.25)'}
+                onFocus={(e) => e.target.style.borderColor = error ? '#E74C3C' : '#4A9FBF'}
+                onBlur={(e) => e.target.style.borderColor = error ? '#E74C3C' : 'rgba(74, 159, 191, 0.25)'}
             />
+            {error && (
+                <p style={{ color: '#E74C3C', fontSize: '0.78rem', margin: '4px 0 0 4px', textAlign: 'left' }}>
+                    {error}
+                </p>
+            )}
         </div>
     );
 };
@@ -50,52 +55,103 @@ function RegisterForm() {
         password: '',
         fullName: ''
     });
-    const [errors, setErrors] = useState({});
+    const [fieldErrors, setFieldErrors] = useState({});
+    const [generalError, setGeneralError] = useState('');
+    const [loading, setLoading] = useState(false);
 
     const handleChange = (e) => {
-        setFormData({
-            ...formData,
-            [e.target.name]: e.target.value
-        });
+        setFormData({ ...formData, [e.target.name]: e.target.value });
+        // Hapus error field saat user mulai mengetik
+        if (fieldErrors[e.target.name]) {
+            setFieldErrors({ ...fieldErrors, [e.target.name]: '' });
+        }
+    };
+
+    // Validasi di frontend sebelum kirim ke backend
+    const validateForm = () => {
+        const errors = {};
+        if (!formData.username.trim()) errors.username = 'Username is required';
+        else if (formData.username.length < 3) errors.username = 'Username must be at least 3 characters';
+
+        if (!formData.email.trim()) errors.email = 'Email is required';
+        else if (!/\S+@\S+\.\S+/.test(formData.email)) errors.email = 'Invalid email format';
+
+        if (!formData.password) errors.password = 'Password is required';
+        else if (formData.password.length < 8) errors.password = 'Password must be at least 8 characters';
+
+        if (!formData.fullName.trim()) errors.fullName = 'Full name is required';
+
+        return errors;
     };
 
     const handleSubmit = async (e) => {
         e.preventDefault();
-        setErrors({});
+        setGeneralError('');
+        setFieldErrors({});
+
+        // Validasi frontend dulu
+        const validationErrors = validateForm();
+        if (Object.keys(validationErrors).length > 0) {
+            setFieldErrors(validationErrors);
+            return;
+        }
+
+        setLoading(true);
         try {
             const response = await fetch('http://localhost:8080/api/auth/register/user', {
                 method: 'POST',
-                headers: {
-                    'Content-Type': 'application/json'
-                },
+                headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify(formData)
             });
 
-            if (response.ok) {
-                const data = await response.json();
+            const text = await response.text();
+            const data = text ? JSON.parse(text) : {};
 
-                // Save to registered_users for tracking
+            if (response.ok) {
+                // Simpan ke localStorage untuk tracking
                 const registeredUsers = JSON.parse(localStorage.getItem('registered_users') || '[]');
-                const newUser = {
-                    id: data.user?.id || Date.now(),
+                registeredUsers.push({
+                    id: data.id || Date.now(),
                     username: formData.username,
                     email: formData.email,
                     fullName: formData.fullName,
                     role: 'user',
                     isVerified: false,
                     createdAt: new Date().toISOString()
-                };
-                registeredUsers.push(newUser);
+                });
                 localStorage.setItem('registered_users', JSON.stringify(registeredUsers));
-
                 navigate('/login');
             } else {
-                const errorData = await response.json();
-                setErrors(errorData);
+                // Parse error dari backend dengan pesan yang user-friendly
+                if (data.message) {
+                    // Error dari backend kita (string biasa)
+                    setGeneralError(data.message);
+                } else if (data.errors) {
+                    // Error validasi Spring (array)
+                    const errors = {};
+                    data.errors.forEach(err => {
+                        errors[err.field] = err.defaultMessage;
+                    });
+                    setFieldErrors(errors);
+                } else if (typeof data === 'object') {
+                    // Error validasi Spring format lain
+                    const friendlyErrors = {};
+                    Object.entries(data).forEach(([key, val]) => {
+                        if (key === 'password') friendlyErrors.password = 'Password must be at least 8 characters';
+                        else if (key === 'email') friendlyErrors.email = 'Invalid email format';
+                        else if (key === 'username') friendlyErrors.username = val;
+                        else friendlyErrors.general = val;
+                    });
+                    setFieldErrors(friendlyErrors);
+                } else {
+                    setGeneralError('Registration failed. Please try again.');
+                }
             }
         } catch (error) {
             console.error('Registration error:', error);
-            setErrors({ general: 'Registration failed. Please try again.' });
+            setGeneralError('Cannot connect to server. Make sure the backend is running.');
+        } finally {
+            setLoading(false);
         }
     };
 
@@ -128,20 +184,20 @@ function RegisterForm() {
                         Please fill in your details to register
                     </p>
 
-                    {Object.keys(errors).length > 0 && (
+                    {/* General error */}
+                    {generalError && (
                         <div style={{
                             color: '#E74C3C',
                             backgroundColor: '#FCE4EC',
-                            padding: '12px',
+                            padding: '12px 16px',
                             borderRadius: '12px',
                             marginBottom: '20px',
                             fontSize: '0.85rem',
                             fontWeight: 500,
-                            textAlign: 'left'
+                            textAlign: 'left',
+                            borderLeft: '4px solid #E74C3C'
                         }}>
-                            {Object.values(errors).map((error, index) => (
-                                <p key={index} style={{ margin: '2px 0' }}>{error}</p>
-                            ))}
+                            ⚠️ {generalError}
                         </div>
                     )}
 
@@ -150,7 +206,8 @@ function RegisterForm() {
                         name="username"
                         value={formData.username}
                         onChange={handleChange}
-                        placeholder="Enter username"
+                        placeholder="At least 3 characters"
+                        error={fieldErrors.username}
                     />
 
                     <BaseInput
@@ -160,6 +217,7 @@ function RegisterForm() {
                         value={formData.email}
                         onChange={handleChange}
                         placeholder="your@email.com"
+                        error={fieldErrors.email}
                     />
 
                     <BaseInput
@@ -168,7 +226,8 @@ function RegisterForm() {
                         name="password"
                         value={formData.password}
                         onChange={handleChange}
-                        placeholder="Enter password (min 6 characters)"
+                        placeholder="At least 8 characters"
+                        error={fieldErrors.password}
                     />
 
                     <BaseInput
@@ -176,26 +235,30 @@ function RegisterForm() {
                         name="fullName"
                         value={formData.fullName}
                         onChange={handleChange}
-                        placeholder="Enter your full name"
+                        placeholder="Your full name"
+                        error={fieldErrors.fullName}
                     />
 
-                    <button type="submit" style={{
-                        width: '100%',
-                        padding: '14px',
-                        borderRadius: '12px',
-                        border: 'none',
-                        backgroundColor: '#4A9FBF',
-                        color: '#FFFFFF',
-                        fontWeight: 700,
-                        fontSize: '1rem',
-                        cursor: 'pointer',
-                        marginTop: '10px',
-                        transition: 'background 0.2s'
-                    }}
-                    onMouseOver={(e) => e.target.style.backgroundColor = '#1A6B8A'}
-                    onMouseOut={(e) => e.target.style.backgroundColor = '#4A9FBF'}
+                    <button
+                        type="submit"
+                        disabled={loading}
+                        style={{
+                            width: '100%',
+                            padding: '14px',
+                            borderRadius: '12px',
+                            border: 'none',
+                            backgroundColor: loading ? '#94A3B8' : '#4A9FBF',
+                            color: '#FFFFFF',
+                            fontWeight: 700,
+                            fontSize: '1rem',
+                            cursor: loading ? 'not-allowed' : 'pointer',
+                            marginTop: '10px',
+                            transition: 'background 0.2s'
+                        }}
+                        onMouseOver={(e) => { if (!loading) e.target.style.backgroundColor = '#1A6B8A'; }}
+                        onMouseOut={(e) => { if (!loading) e.target.style.backgroundColor = '#4A9FBF'; }}
                     >
-                        Sign Up
+                        {loading ? 'Signing up...' : 'Sign Up'}
                     </button>
 
                     <p style={{ marginTop: '24px', fontSize: '0.9rem', color: '#5D6D7E', marginBottom: '8px' }}>
@@ -219,18 +282,8 @@ function RegisterForm() {
                             fontWeight: 700,
                             textDecoration: 'none',
                             border: '1px solid rgba(74, 159, 191, 0.3)',
-                            backgroundColor: '#FFFFFF',
-                            transition: 'all 0.2s'
-                        }}
-                        onMouseOver={(e) => {
-                            e.target.style.backgroundColor = '#F2F7F9';
-                            e.target.style.borderColor = '#4A9FBF';
-                        }}
-                        onMouseOut={(e) => {
-                            e.target.style.backgroundColor = '#FFFFFF';
-                            e.target.style.borderColor = 'rgba(74, 159, 191, 0.3)';
-                        }}
-                        >
+                            backgroundColor: '#FFFFFF'
+                        }}>
                             I'm an artist+
                         </Link>
                     </p>
