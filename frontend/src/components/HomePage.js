@@ -1,9 +1,9 @@
-// src/components/HomePage.js - FINAL WORKING VERSION
+// HomePage.js - Unified Feed with Filters (FIXED)
 import React, { useState, useEffect } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import {
   Box, Container, Typography, Button, Grid, Card, CardContent,
-  Avatar, Stack, Chip, Modal, IconButton, Skeleton, ToggleButton, ToggleButtonGroup, Rating
+  Avatar, Stack, Chip, Modal, IconButton, Skeleton, ToggleButton, ToggleButtonGroup
 } from '@mui/material';
 import { motion, AnimatePresence } from 'framer-motion';
 import StarIcon from '@mui/icons-material/Star';
@@ -14,7 +14,7 @@ import ChatIcon from '@mui/icons-material/Chat';
 import WhatshotIcon from '@mui/icons-material/Whatshot';
 import ShuffleIcon from '@mui/icons-material/Shuffle';
 import AccessTimeIcon from '@mui/icons-material/AccessTime';
-import { cartService } from '../services/RealTimeDataService';
+import { cartService, reviewService, useRealTimeData } from '../services/RealTimeDataService';
 
 import {
   Palette, Layers, Create, AutoAwesome,
@@ -45,50 +45,6 @@ const getArtistCommissions = () => {
 const getArtistPortfolio = () => {
   const saved = localStorage.getItem('creartsi_artist_portfolio');
   return saved ? JSON.parse(saved) : [];
-};
-
-const getCurrentUserData = () => {
-  const saved = localStorage.getItem('user');
-  return saved ? JSON.parse(saved) : null;
-};
-
-// Fungsi sederhana untuk ambil data artist tanpa service tambahan
-const getSimpleArtistData = (artistName) => {
-  if (!artistName) return null;
-
-  const currentUser = getCurrentUserData();
-  if (currentUser && (currentUser.fullName === artistName || currentUser.username === artistName)) {
-    return {
-      name: currentUser.fullName,
-      username: currentUser.username,
-      avatar: currentUser.avatarUrl || 'https://i.pravatar.cc/150?img=1',
-      isVerified: currentUser.isVerified === true,
-      rating: 0,
-      reviews: 0
-    };
-  }
-
-  const users = JSON.parse(localStorage.getItem('registered_users') || '[]');
-  const foundUser = users.find(u => u.fullName === artistName || u.username === artistName);
-  if (foundUser) {
-    return {
-      name: foundUser.fullName,
-      username: foundUser.username,
-      avatar: foundUser.avatarUrl || 'https://i.pravatar.cc/150?img=1',
-      isVerified: foundUser.isVerified === true,
-      rating: 0,
-      reviews: 0
-    };
-  }
-
-  return {
-    name: artistName,
-    username: artistName.toLowerCase().replace(/ /g, ''),
-    avatar: 'https://i.pravatar.cc/150?img=1',
-    isVerified: false,
-    rating: 0,
-    reviews: 0
-  };
 };
 
 // ==========================================
@@ -301,40 +257,94 @@ function HomePage() {
   const [filter, setFilter] = useState('latest');
   const [loading, setLoading] = useState(true);
   const [selectedItem, setSelectedItem] = useState(null);
-  const currentUser = getCurrentUserData();
+  const [cartCount, setCartCount] = useState(0);
+  const currentUser = JSON.parse(localStorage.getItem('user'));
+
+useEffect(() => {
+  if (currentUser) {
+    const cart = cartService.getCart();
+    const userCart = cart.filter(item => item.userId === currentUser.id);
+    setCartCount(userCart.length);
+  }
+}, []);
+
+// Fungsi save ke cart
+const handleSaveToCart = (e, item) => {
+  e.stopPropagation();
+  if (!currentUser) {
+    alert('Please login first');
+    return;
+  }
+
+  const commissionData = {
+    id: item.id.replace('comm-', ''),
+    title: item.title,
+    priceFrom: parseInt(item.price.replace(/[^0-9]/g, '')),
+    coverImage: item.imageUrl,
+    artistName: item.artistName
+  };
+
+  cartService.addToCart(commissionData, currentUser.id);
+  alert(`Added "${item.title}" to cart!`);
+};
+
+// Di modal, tampilkan rating real
+const [artistRating, setArtistRating] = useState({ rating: 0, count: 0 });
+
+useEffect(() => {
+  if (selectedItem?.artistId) {
+    const rating = reviewService.getArtistRating(selectedItem.artistId);
+    setArtistRating(rating);
+  }
+}, [selectedItem]);
 
   useEffect(() => {
     const loadFeed = () => {
       setLoading(true);
 
       const commissions = getArtistCommissions().filter(comm => comm.isOpen === true);
+      const portfolio = getArtistPortfolio();
 
-      const commissionItems = commissions.map(comm => {
-        const artistData = getSimpleArtistData(comm.artistName);
+      const commissionItems = commissions.map(comm => ({
+        id: `comm-${comm.id}`,
+        type: 'commission',
+        title: comm.title || 'Commission Package',
+        artistName: comm.artistName || 'Artist',
+        category: comm.category || 'General',
+        price: `Rp ${comm.priceFrom?.toLocaleString('id-ID') || '0'}`,
+        rating: 5.0,
+        reviews: 0,
+        avatar: 'https://i.pravatar.cc/150?img=1',
+        imageUrl: comm.coverImage || 'https://images.unsplash.com/photo-1618005182384-a83a8bd57fbe?w=600',
+        description: comm.description || '',
+        turnaround: comm.turnaround || '7-14 days',
+        revisions: comm.revisions || 2,
+        slots: comm.slots || 5,
+        tags: [comm.category],
+        createdAt: comm.createdAt || new Date().toISOString(),
+        likes: Math.floor(Math.random() * 100)
+      }));
 
-        return {
-          id: `comm-${comm.id}`,
-          type: 'commission',
-          title: comm.title || 'Commission Package',
-          artistName: artistData?.name || comm.artistName || 'Artist',
-          artistUsername: artistData?.username || '',
-          artistAvatar: artistData?.avatar || 'https://i.pravatar.cc/150?img=1',
-          isVerified: artistData?.isVerified || false,
-          rating: 0,
-          reviews: 0,
-          category: comm.category || 'General',
-          price: `Rp ${comm.priceFrom?.toLocaleString('id-ID') || '0'}`,
-          imageUrl: comm.coverImage || 'https://images.unsplash.com/photo-1618005182384-a83a8bd57fbe?w=600',
-          description: comm.description || '',
-          turnaround: comm.turnaround || '7-14 days',
-          revisions: comm.revisions || 2,
-          slots: comm.slots || 5,
-          tags: comm.includes || [comm.category],
-          createdAt: comm.createdAt || new Date().toISOString(),
-        };
-      });
+      const portfolioItems = portfolio.map(item => ({
+        id: `port-${item.id}`,
+        type: 'portfolio',
+        title: item.title,
+        artistName: item.artistName || 'Artist',
+        category: item.medium || 'Artwork',
+        price: null,
+        rating: null,
+        avatar: 'https://i.pravatar.cc/150?img=1',
+        imageUrl: item.imageUrl,
+        description: item.description || '',
+        tags: item.tags || [],
+        createdAt: item.createdAt || new Date().toISOString(),
+        likes: Math.floor(Math.random() * 200)
+      }));
 
-      setFeedItems(commissionItems);
+      let allItems = [...commissionItems, ...portfolioItems];
+      allItems.sort((a, b) => new Date(b.createdAt) - new Date(a.createdAt));
+
+      setFeedItems(allItems);
       setLoading(false);
     };
 
@@ -347,9 +357,13 @@ function HomePage() {
 
   const getFilteredItems = () => {
     let items = [...feedItems];
+
     switch (filter) {
       case 'latest':
         items.sort((a, b) => new Date(b.createdAt) - new Date(a.createdAt));
+        break;
+      case 'trending':
+        items.sort((a, b) => (b.likes || 0) - (a.likes || 0));
         break;
       case 'random':
         items = [...items].sort(() => Math.random() - 0.5);
@@ -357,6 +371,7 @@ function HomePage() {
       default:
         break;
     }
+
     return items.slice(0, 12);
   };
 
@@ -391,9 +406,11 @@ function HomePage() {
       <HeroSection />
       <ServiceCategories />
 
+      {/* UNIFIED FEED SECTION */}
       <Container maxWidth="xl" sx={{ py: 5 }}>
         <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 5, flexWrap: 'wrap', gap: 2 }}>
           <Typography variant="h4" fontWeight={800} sx={{ color: '#1A6B8A' }}>Discover</Typography>
+
           <ToggleButtonGroup
             value={filter}
             exclusive
@@ -416,14 +433,15 @@ function HomePage() {
             }}
           >
             <ToggleButton value="latest"><AccessTimeIcon sx={{ mr: 1, fontSize: 18 }} /> Latest</ToggleButton>
+            <ToggleButton value="trending"><WhatshotIcon sx={{ mr: 1, fontSize: 18 }} /> Trending</ToggleButton>
             <ToggleButton value="random"><ShuffleIcon sx={{ mr: 1, fontSize: 18 }} /> Random</ToggleButton>
           </ToggleButtonGroup>
         </Box>
 
         {filteredItems.length === 0 ? (
           <Box sx={{ textAlign: 'center', py: 12, bgcolor: '#FFFFFF', borderRadius: '28px', border: '1px solid #E2E8F0' }}>
-            <Typography variant="h5" sx={{ color: '#4A9FBF', mb: 2, fontWeight: 700 }}>No Commissions Yet</Typography>
-            <Typography variant="body1" sx={{ color: '#64748B', mb: 4 }}>No artists have posted commissions yet.</Typography>
+            <Typography variant="h5" sx={{ color: '#4A9FBF', mb: 2, fontWeight: 700 }}>No Content Yet</Typography>
+            <Typography variant="body1" sx={{ color: '#64748B', mb: 4 }}>No commissions or portfolio items available.</Typography>
             <Button component={Link} to="/for-artists" variant="contained" sx={{ bgcolor: '#4A9FBF', borderRadius: '50px', textTransform: 'none', px: 5, py: 1.5, fontWeight: 600 }}>Join as Artist</Button>
           </Box>
         ) : (
@@ -432,75 +450,33 @@ function HomePage() {
               {filteredItems.map((item, index) => (
                 <Grid item xs={12} sm={6} md={3} key={item.id}>
                   <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.3, delay: index * 0.05 }} whileHover={{ y: -8 }}>
-                    <Card
-                      onClick={() => handleOpenModal(item)}
-                      sx={{
-                        bgcolor: '#FFFFFF',
-                        borderRadius: '20px',
-                        cursor: 'pointer',
-                        overflow: 'hidden',
-                        height: '100%',
-                        display: 'flex',
-                        flexDirection: 'column',
-                        transition: 'all 0.3s ease',
-                        boxShadow: '0 8px 20px rgba(0,0,0,0.05)',
-                        '&:hover': {
-                          boxShadow: '0 20px 35px rgba(74, 159, 191, 0.15)',
-                        }
-                      }}
-                    >
+                    <Card onClick={() => handleOpenModal(item)} sx={{ bgcolor: '#FFFFFF', borderRadius: '20px', cursor: 'pointer', overflow: 'hidden', height: '100%', display: 'flex', flexDirection: 'column', transition: 'all 0.3s ease', boxShadow: '0 8px 20px rgba(0,0,0,0.05)', '&:hover': { boxShadow: '0 20px 35px rgba(74, 159, 191, 0.15)' } }}>
                       <Box sx={{ position: 'relative', height: 220, overflow: 'hidden' }}>
-                        <img
-                          src={item.imageUrl}
-                          alt={item.title}
-                          style={{ width: '100%', height: '100%', objectFit: 'cover' }}
-                        />
-                        <Chip
-                          label="OPEN"
-                          size="small"
-                          sx={{
-                            position: 'absolute',
-                            top: 16,
-                            left: 16,
-                            bgcolor: '#10B981',
-                            color: 'white',
-                            fontWeight: 700,
-                            fontSize: '0.7rem',
-                            borderRadius: '20px'
-                          }}
-                        />
+                        <Box component="img" src={item.imageUrl} alt={item.title} sx={{ width: '100%', height: '100%', objectFit: 'cover', transition: 'transform 0.3s', '&:hover': { transform: 'scale(1.05)' } }} />
+                        <Chip label={item.type === 'commission' ? 'Commission' : 'Portfolio'} size="small" sx={{ position: 'absolute', top: 16, left: 16, bgcolor: item.type === 'commission' ? '#4A9FBF' : '#8B5CF6', color: 'white', fontWeight: 700, fontSize: '0.7rem', borderRadius: '20px' }} />
+                        <IconButton sx={{ position: 'absolute', top: 12, right: 12, bgcolor: 'rgba(255,255,255,0.9)', '&:hover': { bgcolor: '#FFFFFF' } }}><BookmarkBorderIcon fontSize="small" /></IconButton>
                       </Box>
                       <CardContent sx={{ p: 2.5, flexGrow: 1 }}>
-                        <Typography variant="caption" sx={{ color: '#4A9FBF', fontWeight: 700 }}>
-                          {item.category}
-                        </Typography>
-                        <Typography variant="subtitle1" fontWeight={800} sx={{ mt: 1, mb: 1.5, lineHeight: 1.3 }}>
-                          {item.title}
-                        </Typography>
-
-                        <Stack
-                          direction="row"
-                          alignItems="center"
-                          spacing={1.5}
-                          sx={{ mb: 2, cursor: 'pointer' }}
-                          component={Link}
-                          to={`/artist/${item.artistUsername || item.artistName}`}
-                          onClick={(e) => e.stopPropagation()}
-                        >
-                          <Avatar src={item.artistAvatar} sx={{ width: 28, height: 28 }} />
-                          <Typography variant="body2" sx={{ color: '#64748B', fontWeight: 500 }}>
-                            {item.artistName}
-                          </Typography>
-                          {item.isVerified && <VerifiedIcon sx={{ color: '#4A9FBF', fontSize: 14 }} />}
+                        <Typography variant="caption" sx={{ color: '#4A9FBF', fontWeight: 700 }}>{item.category}</Typography>
+                        <Typography variant="subtitle1" fontWeight={800} sx={{ mt: 1, mb: 1.5, lineHeight: 1.3, minHeight: '48px' }}>{item.title}</Typography>
+                        <Stack direction="row" alignItems="center" spacing={1.5} sx={{ mb: 2 }}>
+                          <Avatar src={item.avatar} sx={{ width: 28, height: 28 }} />
+                          <Typography variant="body2" sx={{ color: '#64748B', fontWeight: 500 }}>{item.artistName}</Typography>
+                          <VerifiedIcon sx={{ color: '#4A9FBF', fontSize: 14 }} />
                         </Stack>
-
-                        <Typography variant="h6" fontWeight={800} sx={{ color: '#1A6B8A' }}>
-                          {item.price}
-                        </Typography>
-
-                        <Typography variant="caption" sx={{ color: '#94A3B8', display: 'block', mt: 1 }}>
-                          {item.slots} slots available
-                        </Typography>
+                        {item.type === 'commission' && item.price && <Typography variant="h6" fontWeight={800} sx={{ color: '#1A6B8A' }}>{item.price}</Typography>}
+                        {item.tags && item.tags.length > 0 && (
+                          <Stack direction="row" spacing={1} sx={{ mt: 1.5, flexWrap: 'wrap', gap: 0.5 }}>
+                            {item.tags.slice(0, 2).map((tag, idx) => <Chip key={idx} label={tag} size="small" variant="outlined" sx={{ fontSize: '0.65rem', height: '24px' }} />)}
+                          </Stack>
+                        )}
+                        {item.type === 'commission' && (
+                          <Stack direction="row" alignItems="center" spacing={1} sx={{ mt: 1.5 }}>
+                            <StarIcon sx={{ color: '#FBBF24', fontSize: 16 }} />
+                            <Typography variant="body2" fontWeight={700}>{item.rating}</Typography>
+                            <Typography variant="caption" sx={{ color: '#94A3B8' }}>({item.reviews} reviews)</Typography>
+                          </Stack>
+                        )}
                       </CardContent>
                     </Card>
                   </motion.div>
@@ -513,96 +489,76 @@ function HomePage() {
 
       <PlatformCommitment />
 
-      {/* MODAL DETAIL */}
+      {/* ========== MODAL DETAIL - HANYA SATU ========== */}
       <Modal open={Boolean(selectedItem)} onClose={handleCloseModal} sx={{ display: 'flex', alignItems: 'center', justifyContent: 'center', p: 3 }}>
         <Box sx={{ outline: 'none', width: '100%', maxWidth: '1050px' }}>
           {selectedItem && (
             <Box sx={{ bgcolor: '#FFFFFF', borderRadius: '28px', overflow: 'hidden', display: 'flex', flexDirection: { xs: 'column', md: 'row' }, maxHeight: '90vh' }}>
 
+              {/* LEFT SIDE - IMAGE */}
               <Box sx={{ flex: 1.2, bgcolor: '#F8FAFC', overflowY: 'auto' }}>
                 <img src={selectedItem.imageUrl} alt={selectedItem.title} style={{ width: '100%', height: 'auto', display: 'block' }} />
               </Box>
 
+              {/* RIGHT SIDE - DETAILS */}
               <Box sx={{ flex: 1, p: 4, overflowY: 'auto', position: 'relative' }}>
-                <IconButton onClick={handleCloseModal} sx={{ position: 'absolute', top: 16, right: 16, bgcolor: '#FFFFFF', boxShadow: '0 2px 8px rgba(0,0,0,0.1)' }}>
+                <IconButton onClick={handleCloseModal} sx={{ position: 'absolute', top: 16, right: 16, bgcolor: '#FFFFFF', boxShadow: '0 2px 8px rgba(0,0,0,0.1)', '&:hover': { bgcolor: '#F1F5F9' } }}>
                   <CloseIcon />
                 </IconButton>
 
-                <Chip label="Commission" size="small" sx={{ bgcolor: '#4A9FBF', color: 'white', fontWeight: 700, mb: 2 }} />
+                <Chip label={selectedItem.type === 'commission' ? 'Commission' : 'Portfolio'} size="small" sx={{ bgcolor: selectedItem.type === 'commission' ? '#4A9FBF' : '#8B5CF6', color: 'white', fontWeight: 700, mb: 2 }} />
 
-                <Typography variant="h4" fontWeight={800} sx={{ mb: 2, color: '#1A6B8A' }}>
-                  {selectedItem.title}
-                </Typography>
+                <Typography variant="h4" fontWeight={800} sx={{ mb: 2, color: '#1A6B8A' }}>{selectedItem.title}</Typography>
 
-                <Typography variant="body2" sx={{ color: '#64748B', mb: 1 }}>Starting from</Typography>
-                <Typography variant="h3" fontWeight={800} sx={{ color: '#4A9FBF', mb: 3 }}>
-                  {selectedItem.price}
-                </Typography>
+                {selectedItem.type === 'commission' && (
+                  <>
+                    <Typography variant="body2" sx={{ color: '#64748B', mb: 1 }}>Starting from</Typography>
+                    <Typography variant="h3" fontWeight={800} sx={{ color: '#4A9FBF', mb: 3 }}>{selectedItem.price}</Typography>
+                  </>
+                )}
 
-                <Typography variant="body2" sx={{ color: '#475569', mb: 4, lineHeight: 1.7 }}>
-                  {selectedItem.description}
-                </Typography>
+                <Typography variant="body2" sx={{ color: '#475569', mb: 4, lineHeight: 1.7 }}>{selectedItem.description || 'No description provided.'}</Typography>
 
-                <Box sx={{ display: 'flex', gap: 4, mb: 4, pb: 3, borderBottom: '1px solid #E2E8F0' }}>
-                  <Box>
-                    <Typography variant="caption" sx={{ color: '#94A3B8' }}>Turnaround</Typography>
-                    <Typography variant="body1" fontWeight={700}>{selectedItem.turnaround}</Typography>
+                {selectedItem.type === 'commission' && (
+                  <Box sx={{ display: 'flex', gap: 4, mb: 4, pb: 3, borderBottom: '1px solid #E2E8F0' }}>
+                    <Box><Typography variant="caption" sx={{ color: '#94A3B8' }}>Turnaround</Typography><Typography variant="body1" fontWeight={700}>{selectedItem.turnaround || '7-14 days'}</Typography></Box>
+                    <Box><Typography variant="caption" sx={{ color: '#94A3B8' }}>Revisions</Typography><Typography variant="body1" fontWeight={700}>{selectedItem.revisions || 2}</Typography></Box>
+                    <Box><Typography variant="caption" sx={{ color: '#94A3B8' }}>Slots Left</Typography><Typography variant="body1" fontWeight={700}>{selectedItem.slots || 5}</Typography></Box>
                   </Box>
-                  <Box>
-                    <Typography variant="caption" sx={{ color: '#94A3B8' }}>Revisions</Typography>
-                    <Typography variant="body1" fontWeight={700}>{selectedItem.revisions} times</Typography>
-                  </Box>
-                  <Box>
-                    <Typography variant="caption" sx={{ color: '#94A3B8' }}>Slots Left</Typography>
-                    <Typography variant="body1" fontWeight={700}>{selectedItem.slots}</Typography>
-                  </Box>
-                </Box>
+                )}
 
                 {selectedItem.tags && selectedItem.tags.length > 0 && (
                   <Box sx={{ mb: 4 }}>
-                    <Typography variant="caption" sx={{ color: '#64748B', fontWeight: 600, mb: 1, display: 'block' }}>What's Included</Typography>
+                    <Typography variant="caption" sx={{ color: '#64748B', fontWeight: 600, mb: 1, display: 'block' }}>Tags</Typography>
                     <Stack direction="row" spacing={1} flexWrap="wrap" gap={1}>
-                      {selectedItem.tags.map((tag, idx) => (
-                        <Chip key={idx} label={tag} size="small" variant="outlined" />
-                      ))}
+                      {selectedItem.tags.map((tag, idx) => <Chip key={idx} label={tag} size="small" variant="outlined" />)}
                     </Stack>
                   </Box>
                 )}
 
-                <Stack
-                  direction="row"
-                  alignItems="center"
-                  spacing={2}
-                  sx={{ mb: 4, p: 2.5, bgcolor: '#F8FAFC', borderRadius: '20px', cursor: 'pointer' }}
-                  component={Link}
-                  to={`/artist/${selectedItem.artistUsername || selectedItem.artistName}`}
-                  onClick={(e) => e.stopPropagation()}
-                >
-                  <Avatar src={selectedItem.artistAvatar} sx={{ width: 56, height: 56 }}>
-                    {selectedItem.artistName?.charAt(0)}
-                  </Avatar>
-                  <Box>
-                    <Typography variant="subtitle1" fontWeight={800}>{selectedItem.artistName}</Typography>
-                    <Typography variant="caption" sx={{ color: '#64748B' }}>@{selectedItem.artistUsername}</Typography>
-                  </Box>
+                <Stack direction="row" alignItems="center" spacing={2} sx={{ mb: 4, p: 2.5, bgcolor: '#F8FAFC', borderRadius: '20px' }}>
+                  <Avatar src={selectedItem.avatar} sx={{ width: 56, height: 56 }}>{selectedItem.artistName?.charAt(0)}</Avatar>
+                  <Box><Typography variant="subtitle1" fontWeight={800}>{selectedItem.artistName}</Typography><Typography variant="caption" sx={{ color: '#64748B' }}>Verified Artist</Typography></Box>
                 </Stack>
 
+                {/* TOMBOL REQUEST & CHAT */}
                 <Stack direction="row" spacing={2}>
                   <Button
                     component={Link}
-                    to={`/artists/${selectedItem.id.replace('comm-', '')}`}
+                    to={selectedItem.type === 'commission' ? `/artists/${selectedItem.id}` : '#'}
                     fullWidth
                     variant="contained"
-                    sx={{ bgcolor: '#4A9FBF', borderRadius: '50px', py: 1.8, textTransform: 'none', fontWeight: 700 }}
+                    disabled={selectedItem.type !== 'commission'}
+                    sx={{ bgcolor: '#4A9FBF', borderRadius: '50px', py: 1.8, textTransform: 'none', fontWeight: 700, fontSize: '1rem', '&:hover': { bgcolor: '#1A6B8A' }, '&.Mui-disabled': { bgcolor: '#CBD5E1', color: '#FFFFFF' } }}
                   >
-                    Request Commission
+                    {selectedItem.type === 'commission' ? 'Request Commission' : 'Portfolio Only'}
                   </Button>
                   <Button
                     component={Link}
-                    to={`/artists/${selectedItem.id.replace('comm-', '')}`}
+                    to={selectedItem.type === 'commission' ? `/artists/${selectedItem.id}` : '#'}
                     variant="outlined"
                     startIcon={<ChatIcon />}
-                    sx={{ borderRadius: '50px', px: 3, textTransform: 'none', fontWeight: 600, borderColor: '#4A9FBF', color: '#4A9FBF' }}
+                    sx={{ borderRadius: '50px', px: 3, textTransform: 'none', fontWeight: 600, borderColor: '#4A9FBF', color: '#4A9FBF', '&:hover': { bgcolor: 'rgba(74,159,191,0.05)', borderColor: '#1A6B8A' } }}
                   >
                     Chat
                   </Button>
