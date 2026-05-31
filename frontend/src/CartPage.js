@@ -9,7 +9,7 @@ import DeleteIcon from '@mui/icons-material/Delete';
 import AddIcon from '@mui/icons-material/Add';
 import RemoveIcon from '@mui/icons-material/Remove';
 import ShoppingCartIcon from '@mui/icons-material/ShoppingCart';
-import { cartService } from '../services/RealTimeDataService';
+import { cartService } from './services/RealTimeDataService';
 
 function CartPage() {
   const navigate = useNavigate();

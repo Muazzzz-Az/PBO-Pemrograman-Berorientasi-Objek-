@@ -32,6 +32,7 @@ public class SecurityConfig {
                         .requestMatchers("/api/chat/**").permitAll() // BARIS BARU: Akses fitur ChatBox
                         .requestMatchers("/api/commissions/**").permitAll() // Akses fitur Komisi kita
                         .requestMatchers("/h2-console/**").permitAll() // Izin akses database H2
+                        .requestMatchers("/ws/**").permitAll() // Izin akses WebSocket
                         .anyRequest().authenticated() // Sisanya wajib login
                 )
                 // Baris tambahan agar H2 Console bisa muncul di browser

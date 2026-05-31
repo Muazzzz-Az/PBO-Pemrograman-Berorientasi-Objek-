@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useRef } from 'react';
 import io from 'socket.io-client';
-import { Box, TextField, Button, Typography, Paper, List, ListItem, ListItemText } from '@mui/material';
+import { Box, TextField, Button, Typography, Paper, List, ListItem } from '@mui/material';
 
 let socket;
 
@@ -9,26 +9,28 @@ function ChatBox({ artistId, artistName, currentUser }) {
     const [chatLog, setChatLog] = useState([]);
     const messagesEndRef = useRef(null);
 
-    // Membuat Room ID unik gabungan ID Pembeli dan ID Artist
-    // Format: room_pembeliID_artistID
+    // Room ID unik gabungan ID Pembeli dan ID Artist
     const roomId = currentUser ? `room_${currentUser.id}_${artistId}` : null;
 
     useEffect(() => {
-        if (!currentUser) return;
+        if (!currentUser || !roomId) return;
 
+        // Load riwayat chat dari localStorage
+        const savedChat = JSON.parse(localStorage.getItem(`chat_${roomId}`) || '[]');
+        setChatLog(savedChat);
+
+        // Koneksikan ke socket.io server
         const token = localStorage.getItem('token');
+        socket = io('http://localhost:8080', { auth: { token } });
 
-        // Koneksikan ke server socket dengan menyertakan Token Auth
-        socket = io('http://localhost:8080', {
-            auth: { token }
-        });
-
-        // Masuk ke room khusus transaksi ini
         socket.emit('join_room', roomId);
 
-        // Dengarkan pesan masuk dari lawan bicara
         socket.on('receive_message', (data) => {
-            setChatLog((prev) => [...prev, data]);
+            setChatLog((prev) => {
+                const updated = [...prev, data];
+                localStorage.setItem(`chat_${roomId}`, JSON.stringify(updated));
+                return updated;
+            });
         });
 
         return () => {
@@ -36,51 +38,42 @@ function ChatBox({ artistId, artistName, currentUser }) {
         };
     }, [roomId, currentUser]);
 
-    // Auto scroll ke pesan paling bawah tiap ada chat baru
+    // Auto scroll ke pesan paling bawah
     useEffect(() => {
         messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
     }, [chatLog]);
 
     const handleSendMessage = (e) => {
         e.preventDefault();
-        if (message.trim() === '') return;
+        if (!message.trim()) return;
 
         const messageData = {
-            roomId: roomId,
+            id: Date.now(),
             text: message,
-            senderId: currentUser.id
+            content: message,
+            senderId: currentUser.id,
+            senderName: currentUser.fullName || currentUser.username,
+            receiverId: artistId,
+            roomId: roomId,
+            timestamp: new Date().toISOString(),
+            isRead: false
         };
 
-        // Kirim pesan ke socket server
-        socket.emit('send_message', messageData);
+        // Simpan ke localStorage
+        const savedChat = JSON.parse(localStorage.getItem(`chat_${roomId}`) || '[]');
+        savedChat.push(messageData);
+        localStorage.setItem(`chat_${roomId}`, JSON.stringify(savedChat));
+
+        // Kirim ke socket server jika terkoneksi
+        if (socket && socket.connected) {
+            socket.emit('send_message', messageData);
+        }
+
+        // Update UI langsung
+        setChatLog([...chatLog, messageData]);
         setMessage('');
     };
-    // Add this to existing ChatBox.js - modify handleSendMessage
-    const handleSendMessage = () => {
-      if (message.trim() === '') return;
 
-      const messageData = {
-        id: Date.now(),
-        text: message,
-        senderId: currentUser.id,
-        senderName: currentUser.fullName || currentUser.username,
-        receiverId: artistId,
-        roomId: roomId,
-        timestamp: new Date().toISOString(),
-        isRead: false
-      };
-
-      // Save to localStorage
-      const savedChat = JSON.parse(localStorage.getItem(`chat_${roomId}`) || '[]');
-      savedChat.push(messageData);
-      localStorage.setItem(`chat_${roomId}`, JSON.stringify(savedChat));
-
-      // Update UI
-      setChatLog([...chatLog, messageData]);
-      setMessage('');
-    };
-
-    // PROTEKSI: Jika user belum login, tampilkan pesan peringatan
     if (!currentUser) {
         return (
             <Paper style={{ padding: '24px', textAlign: 'center', borderRadius: '16px', backgroundColor: '#FCE4EC', border: '1px solid #F8BBD0' }}>
@@ -122,7 +115,7 @@ function ChatBox({ artistId, artistName, currentUser }) {
                                         {isMe ? 'Anda' : msg.senderName}
                                     </Typography>
                                     <Typography variant="body2" style={{ marginTop: '2px', wordBreak: 'break-word' }}>
-                                        {msg.text}
+                                        {msg.text || msg.content}
                                     </Typography>
                                 </Box>
                             </ListItem>
