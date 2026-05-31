@@ -13,6 +13,8 @@ import ProfilePage from './components/ProfilePage';
 import CommissionList from './components/CommissionList';
 import ArtistRegisterForm from './components/ArtistRegisterForm';
 import CategoryPage from './components/CategoryPage';
+import MessagesPage from './components/MessagesPage';
+import CartPage from './components/CartPage';
 
 // admin package imports
 import AdminDashboard from './components/admin/AdminDashboard';
@@ -139,6 +141,23 @@ function App() {
             element={
               <PrivateRoute isAuthenticated={isAuthenticated}>
                 <ArtistList />
+              </PrivateRoute>
+            }
+          />
+
+          //cart
+          <Route path="/cart" element={
+            <PrivateRoute isAuthenticated={isAuthenticated}>
+              <CartPage />
+            </PrivateRoute>
+          } />
+
+          //chat
+          <Route
+            path="/messages"
+            element={
+              <PrivateRoute isAuthenticated={isAuthenticated}>
+                <MessagesPage user={user} />
               </PrivateRoute>
             }
           />

@@ -1,8 +1,8 @@
 // src/components/artist/ArtistDashboardTab.js
 import React, { useState } from 'react';
 import { Box, Tabs, Tab } from '@mui/material';
-import PortfolioManager from './PortofolioManager';
-import CommisionManager from './CommisionManager';
+import PortfolioManager from './PortfolioManager';
+import CommisionManager from './CommissionManager';
 
 export default function ArtistDashboardTab() {
   const [activeTab, setActiveTab] = useState(0);
