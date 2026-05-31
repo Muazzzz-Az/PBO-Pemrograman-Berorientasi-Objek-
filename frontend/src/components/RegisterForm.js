@@ -1,11 +1,7 @@
+// src/components/RegisterForm.js
 import React, { useState } from 'react';
 import { useNavigate, Link } from 'react-router-dom';
 
-// ==========================================
-// 1. ABSTRACTION & POLYMORPHISM COMPONENT
-// BaseInput menyembunyikan detail tag <input> HTML bawaan (Abstraction).
-// Tipenya berubah secara fleksibel mengikuti props 'type' (Polymorphism).
-// ==========================================
 const BaseInput = ({ label, type = 'text', name, value, onChange, placeholder, required = true }) => {
     return (
         <div style={{ marginBottom: '16px', width: '100%' }}>
@@ -45,11 +41,6 @@ const BaseInput = ({ label, type = 'text', name, value, onChange, placeholder, r
     );
 };
 
-// ==========================================
-// 2. ENCAPSULATION COMPONENT
-// RegisterForm membungkus seluruh state formData, errors,
-// dan fungsi logika API secara aman di dalam satu scope komponen.
-// ==========================================
 function RegisterForm() {
     const navigate = useNavigate();
 
@@ -81,6 +72,22 @@ function RegisterForm() {
             });
 
             if (response.ok) {
+                const data = await response.json();
+
+                // Save to registered_users for tracking
+                const registeredUsers = JSON.parse(localStorage.getItem('registered_users') || '[]');
+                const newUser = {
+                    id: data.user?.id || Date.now(),
+                    username: formData.username,
+                    email: formData.email,
+                    fullName: formData.fullName,
+                    role: 'user',
+                    isVerified: false,
+                    createdAt: new Date().toISOString()
+                };
+                registeredUsers.push(newUser);
+                localStorage.setItem('registered_users', JSON.stringify(registeredUsers));
+
                 navigate('/login');
             } else {
                 const errorData = await response.json();
@@ -88,6 +95,7 @@ function RegisterForm() {
             }
         } catch (error) {
             console.error('Registration error:', error);
+            setErrors({ general: 'Registration failed. Please try again.' });
         }
     };
 
@@ -114,10 +122,10 @@ function RegisterForm() {
             }}>
                 <form onSubmit={handleSubmit}>
                     <h2 style={{ color: '#1A6B8A', margin: '0 0 6px 0', fontWeight: 800, fontSize: '1.8rem' }}>
-                        Buat Akun Baru
+                        Create Account
                     </h2>
                     <p style={{ color: '#5D6D7E', fontSize: '0.95rem', margin: '0 0 32px 0' }}>
-                        Silakan isi data untuk mendaftar sebagai Pengguna
+                        Please fill in your details to register
                     </p>
 
                     {Object.keys(errors).length > 0 && (
@@ -137,14 +145,12 @@ function RegisterForm() {
                         </div>
                     )}
 
-                    {/* 3. IMPLEMENTASI INHERITANCE */}
-                    {/* Setiap komponen di bawah ini mewarisi (inherit) style & base element dari BaseInput */}
                     <BaseInput
                         label="Username"
                         name="username"
                         value={formData.username}
                         onChange={handleChange}
-                        placeholder="Contoh: user123"
+                        placeholder="Enter username"
                     />
 
                     <BaseInput
@@ -153,7 +159,7 @@ function RegisterForm() {
                         name="email"
                         value={formData.email}
                         onChange={handleChange}
-                        placeholder="Contoh: user@email.com"
+                        placeholder="your@email.com"
                     />
 
                     <BaseInput
@@ -162,15 +168,15 @@ function RegisterForm() {
                         name="password"
                         value={formData.password}
                         onChange={handleChange}
-                        placeholder="Masukkan password minimal 6 karakter"
+                        placeholder="Enter password (min 6 characters)"
                     />
 
                     <BaseInput
-                        label="Nama Lengkap"
+                        label="Full Name"
                         name="fullName"
                         value={formData.fullName}
                         onChange={handleChange}
-                        placeholder="Masukkan nama sesuai identitas"
+                        placeholder="Enter your full name"
                     />
 
                     <button type="submit" style={{
@@ -189,22 +195,20 @@ function RegisterForm() {
                     onMouseOver={(e) => e.target.style.backgroundColor = '#1A6B8A'}
                     onMouseOut={(e) => e.target.style.backgroundColor = '#4A9FBF'}
                     >
-                        Daftar Akun
+                        Sign Up
                     </button>
 
                     <p style={{ marginTop: '24px', fontSize: '0.9rem', color: '#5D6D7E', marginBottom: '8px' }}>
-                        Sudah memiliki akun?{' '}
+                        Already have an account?{' '}
                         <Link to="/login" style={{ color: '#4A9FBF', fontWeight: 600, textDecoration: 'none' }}>
-                            Masuk di sini
+                            Login here
                         </Link>
                     </p>
 
-                    {/* PEMBATAS GARIS TIPIS */}
                     <div style={{ margin: '20px 0', borderTop: '1px solid rgba(74, 159, 191, 0.15)' }}></div>
 
-                    {/* TOMBOL MENMENUJU SELEKSI / LOGIN ARTIST */}
                     <p style={{ fontSize: '0.85rem', color: '#7F8C8D', margin: 0 }}>
-                        Ingin bergabung sebagai Seniman CreartsI?
+                        Want to join as an Artist on CreartsI?
                         <br />
                         <Link to="/for-artists" style={{
                             display: 'inline-block',

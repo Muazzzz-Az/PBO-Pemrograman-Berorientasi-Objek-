@@ -1,3 +1,4 @@
+// src/components/admin/ArtistVerification.js
 import React, { useState, useEffect } from 'react';
 import { Table, TableBody, TableCell, TableContainer, TableHead, TableRow, Paper, Button, Typography, Chip, Box } from '@mui/material';
 
@@ -16,28 +17,49 @@ function ArtistVerification() {
     const updated = submissions.map(sub => {
       if (sub.id === id) {
         if (newStatus === 'approved') {
-          // Buat struktur objek notifikasi baru untuk Lonceng Header
+          // Create notification
           const newNotification = {
             id: Date.now(),
-            message: `Selamat! Pengajuan verifikasi Artist untuk @${sub.username} telah disetujui Admin. Anda sekarang bisa mengakses fitur Artist! 🎉`,
+            message: `Congratulations! Your artist application for @${sub.username} has been approved by Admin. You can now access Creator features! 🎉`,
             type: 'ARTIST_APPROVAL',
             isRead: false,
-            timestamp: new Date().toLocaleTimeString('id-ID', { hour: '2-digit', minute: '2-digit' })
+            timestamp: new Date().toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit' })
           };
 
-          // Ambil daftar notifikasi yang sudah ada, lalu masukkan yang baru
           const existingNotifications = JSON.parse(localStorage.getItem('user_notifications')) || [];
           localStorage.setItem('user_notifications', JSON.stringify([newNotification, ...existingNotifications]));
 
-          // Cari data user global di localStorage untuk mengubah field isVerified menjadi true secara otomatis
+          // UPDATE USER IN LOCALSTORAGE
+          // Find user by username in registered_users
           const allUsers = JSON.parse(localStorage.getItem('registered_users')) || [];
+
+          // Update in registered_users
           const updatedUsers = allUsers.map(user => {
             if (user.username === sub.username) {
-              return { ...user, isVerified: true, role: 'artist' }; // Otomatis ubah role dasar ke artist
+              return {
+                ...user,
+                isVerified: true,
+                role: 'artist'
+              };
             }
             return user;
           });
           localStorage.setItem('registered_users', JSON.stringify(updatedUsers));
+
+          // UPDATE CURRENT USER if logged in
+          const currentUser = JSON.parse(localStorage.getItem('user'));
+          if (currentUser && currentUser.username === sub.username) {
+            const updatedCurrentUser = {
+              ...currentUser,
+              isVerified: true,
+              role: 'artist'
+            };
+            localStorage.setItem('user', JSON.stringify(updatedCurrentUser));
+
+            // Trigger event to update UI
+            window.dispatchEvent(new CustomEvent('userUpdated', { detail: updatedCurrentUser }));
+            window.dispatchEvent(new Event('storage'));
+          }
         }
         return { ...sub, status: newStatus };
       }
@@ -46,23 +68,23 @@ function ArtistVerification() {
 
     setSubmissions(updated);
     localStorage.setItem('artist_submissions', JSON.stringify(updated));
-    alert(`Status pendaftaran berhasil diubah menjadi: ${newStatus}`);
+    alert(`Application ${newStatus === 'approved' ? 'APPROVED' : 'REJECTED'} successfully!`);
   };
 
   return (
     <Box>
       <Typography variant="h6" sx={{ color: '#1A6B8A', fontWeight: 700, mb: 3 }}>
-        Permintaan Verifikasi Artist
+        Artist Verification Requests
       </Typography>
       <TableContainer component={Paper} sx={{ borderRadius: '12px', boxShadow: '0 4px 12px rgba(0,0,0,0.05)' }}>
         <Table>
           <TableHead sx={{ bgcolor: '#E0F2FE' }}>
             <TableRow>
-              <TableCell sx={{ fontWeight: 700, color: '#1A6B8A' }}>Nama Kelompok/Kreator</TableCell>
+              <TableCell sx={{ fontWeight: 700, color: '#1A6B8A' }}>Name</TableCell>
               <TableCell sx={{ fontWeight: 700, color: '#1A6B8A' }}>Username</TableCell>
-              <TableCell sx={{ fontWeight: 700, color: '#1A6B8A' }}>Tautan Portofolio</TableCell>
+              <TableCell sx={{ fontWeight: 700, color: '#1A6B8A' }}>Portfolio Link</TableCell>
               <TableCell sx={{ fontWeight: 700, color: '#1A6B8A' }}>Status</TableCell>
-              <TableCell sx={{ fontWeight: 700, color: '#1A6B8A', textAlign: 'center' }}>Aksi</TableCell>
+              <TableCell sx={{ fontWeight: 700, color: '#1A6B8A', textAlign: 'center' }}>Actions</TableCell>
             </TableRow>
           </TableHead>
           <TableBody>
@@ -94,7 +116,7 @@ function ArtistVerification() {
                       </Button>
                     </Box>
                   ) : (
-                    <Typography variant="body2" color="textSecondary">Selesai dievaluasi</Typography>
+                    <Typography variant="body2" color="textSecondary">Completed</Typography>
                   )}
                 </TableCell>
               </TableRow>

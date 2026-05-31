@@ -1,4 +1,4 @@
-
+// src/components/Navbar.js - Enhanced Version
 import React, { useState, useEffect } from 'react';
 import { Link, useNavigate, useLocation } from 'react-router-dom';
 import {
@@ -20,74 +20,151 @@ import {
   useTheme,
   Badge,
   Divider,
-  Tooltip
+  Tooltip,
+  Fade,
+  Paper,
+  Stack
 } from '@mui/material';
 import MenuIcon from '@mui/icons-material/Menu';
 import CloseIcon from '@mui/icons-material/Close';
 import AccountCircleIcon from '@mui/icons-material/AccountCircle';
 import NotificationsNoneIcon from '@mui/icons-material/NotificationsNone';
-import { styled } from '@mui/material/styles';
+import DashboardIcon from '@mui/icons-material/Dashboard';
+import LogoutIcon from '@mui/icons-material/Logout';
+import PersonIcon from '@mui/icons-material/Person';
+import ChatIcon from '@mui/icons-material/Chat';
+import ShoppingCartIcon from '@mui/icons-material/ShoppingCart';
+import BrushIcon from '@mui/icons-material/Brush';
+import { styled, alpha } from '@mui/material/styles';
 import { cartService } from '../services/RealTimeDataService';
 
+// Styled Components dengan animasi lebih halus
 const StyledAppBar = styled(AppBar)(({ theme }) => ({
-  background: '#FFFFFF',
-  boxShadow: 'none',
-  borderBottom: '1px solid rgba(74, 159, 191, 0.12)',
+  background: 'rgba(255, 255, 255, 0.98)',
+  backdropFilter: 'blur(10px)',
+  boxShadow: '0 1px 0 rgba(74, 159, 191, 0.08)',
+  transition: 'all 0.3s ease',
+  '&:hover': {
+    boxShadow: '0 4px 20px rgba(74, 159, 191, 0.1)',
+  },
 }));
 
 const LogoContainer = styled(Box)(({ theme }) => ({
   display: 'flex',
   alignItems: 'center',
-  gap: '6px',
+  gap: '8px',
   cursor: 'pointer',
+  transition: 'transform 0.2s ease',
+  '&:hover': {
+    transform: 'scale(1.02)',
+  },
 }));
 
 const LogoText = styled(Typography)(({ theme }) => ({
   color: '#1A6B8A',
-  fontWeight: 900,
-  fontSize: '1.5rem',
+  fontWeight: 800,
+  fontSize: '1.6rem',
   letterSpacing: '-0.5px',
   fontFamily: '"Plus Jakarta Sans", sans-serif',
+  background: 'linear-gradient(135deg, #1A6B8A 0%, #4A9FBF 100%)',
+  backgroundClip: 'text',
+  WebkitBackgroundClip: 'text',
+  WebkitTextFillColor: 'transparent',
 }));
 
 const NavButton = styled(Button)(({ theme }) => ({
   borderRadius: '40px',
-  padding: '6px 16px',
+  padding: '8px 20px',
   textTransform: 'none',
   fontSize: '0.95rem',
   fontWeight: 600,
   color: '#5D6D7E',
+  position: 'relative',
+  transition: 'all 0.2s ease',
+  '&::before': {
+    content: '""',
+    position: 'absolute',
+    bottom: 0,
+    left: '50%',
+    transform: 'translateX(-50%)',
+    width: 0,
+    height: '2px',
+    backgroundColor: '#4A9FBF',
+    transition: 'width 0.2s ease',
+  },
   '&:hover': {
     color: '#4A9FBF',
     backgroundColor: 'rgba(74, 159, 191, 0.05)',
+    '&::before': {
+      width: '60%',
+    },
   },
 }));
 
 const ArtistButton = styled(Button)(({ theme }) => ({
   borderRadius: '40px',
-  padding: '6px 18px',
+  padding: '8px 22px',
   textTransform: 'none',
   fontSize: '0.9rem',
-  fontWeight: 600,
-  backgroundColor: '#FFFFFF',
-  color: '#4A9FBF',
-  border: '1px solid rgba(74, 159, 191, 0.3)',
+  fontWeight: 700,
+  background: 'linear-gradient(135deg, #4A9FBF 0%, #1A6B8A 100%)',
+  color: '#FFFFFF',
+  border: 'none',
+  transition: 'all 0.3s ease',
+  boxShadow: '0 2px 8px rgba(74, 159, 191, 0.2)',
   '&:hover': {
-    backgroundColor: '#F2F7F9',
-    borderColor: '#4A9FBF',
+    transform: 'translateY(-2px)',
+    boxShadow: '0 6px 16px rgba(74, 159, 191, 0.3)',
+    background: 'linear-gradient(135deg, #5BAFCF 0%, #2A7B9A 100%)',
   },
 }));
 
 const CategoryButton = styled(Button)(({ theme }) => ({
   textTransform: 'none',
   fontSize: '0.85rem',
-  fontWeight: 600,
-  color: '#5D6D7E',
-  padding: '4px 12px',
+  fontWeight: 500,
+  color: '#64748B',
+  padding: '6px 14px',
   whiteSpace: 'nowrap',
+  borderRadius: '30px',
+  transition: 'all 0.2s ease',
   '&:hover': {
     color: '#4A9FBF',
-    backgroundColor: 'transparent',
+    backgroundColor: alpha('#4A9FBF', 0.08),
+    transform: 'translateY(-1px)',
+  },
+}));
+
+const IconButtonStyled = styled(IconButton)(({ theme }) => ({
+  color: '#5D6D7E',
+  padding: 8,
+  transition: 'all 0.2s ease',
+  '&:hover': {
+    color: '#4A9FBF',
+    backgroundColor: alpha('#4A9FBF', 0.08),
+    transform: 'scale(1.05)',
+  },
+}));
+
+const MenuPaper = styled(Paper)(({ theme }) => ({
+  borderRadius: '16px',
+  marginTop: '12px',
+  minWidth: '220px',
+  backgroundColor: '#FFFFFF',
+  border: '1px solid rgba(74, 159, 191, 0.1)',
+  boxShadow: '0 12px 40px rgba(0, 0, 0, 0.08)',
+  overflow: 'hidden',
+}));
+
+const MenuItemStyled = styled(MenuItem)(({ theme }) => ({
+  padding: '12px 20px',
+  fontSize: '0.9rem',
+  fontWeight: 500,
+  gap: '12px',
+  transition: 'all 0.2s ease',
+  '&:hover': {
+    backgroundColor: alpha('#4A9FBF', 0.05),
+    paddingLeft: '24px',
   },
 }));
 
@@ -98,12 +175,22 @@ function Navbar({ isAuthenticated, user, setIsAuthenticated, setUser }) {
   const [notifications, setNotifications] = useState([]);
   const [unreadCount, setUnreadCount] = useState(0);
   const [cartCount, setCartCount] = useState(0);
+  const [scrolled, setScrolled] = useState(false);
 
   const theme = useTheme();
   const isMobile = useMediaQuery(theme.breakpoints.down('lg'));
   const navigate = useNavigate();
   const location = useLocation();
   const [showCategories, setShowCategories] = useState(false);
+
+  // Handle scroll effect
+  useEffect(() => {
+    const handleScroll = () => {
+      setScrolled(window.scrollY > 20);
+    };
+    window.addEventListener('scroll', handleScroll);
+    return () => window.removeEventListener('scroll', handleScroll);
+  }, []);
 
   // Load cart count
   useEffect(() => {
@@ -229,8 +316,8 @@ function Navbar({ isAuthenticated, user, setIsAuthenticated, setUser }) {
   };
 
   const menuItems = [
-    { label: 'Commission', path: '/artists' },
-    { label: 'Shop', path: '/shop' }
+    { label: 'Commission', path: '/artists', icon: <BrushIcon sx={{ fontSize: 18 }} /> },
+    { label: 'Shop', path: '/shop', icon: <ShoppingCartIcon sx={{ fontSize: 18 }} /> }
   ];
 
   const categories = [
@@ -244,25 +331,31 @@ function Navbar({ isAuthenticated, user, setIsAuthenticated, setUser }) {
   ];
 
   return (
-    <StyledAppBar position="sticky" color="transparent" elevation={0}>
+    <StyledAppBar position="sticky" color="transparent" elevation={0} sx={{ boxShadow: scrolled ? '0 4px 20px rgba(0,0,0,0.05)' : '0 1px 0 rgba(74, 159, 191, 0.08)' }}>
       <Container maxWidth="xl">
-        <Toolbar sx={{ justifyContent: 'space-between', py: 0.8, px: { xs: 0, md: 1 } }}>
+        <Toolbar sx={{ justifyContent: 'space-between', py: 1, px: { xs: 1, md: 2 } }}>
 
           {/* Left Side: Logo */}
-          <Box sx={{ display: 'flex', alignItems: 'center', gap: 3 }}>
+          <Box sx={{ display: 'flex', alignItems: 'center', gap: 4 }}>
             <LogoContainer onClick={handleGoHome}>
               <LogoText variant="h6">
-                Crearts<span style={{ color: '#4A9FBF' }}>I</span>
+                Crearts<span style={{ color: '#4A9FBF', WebkitTextFillColor: '#4A9FBF' }}>I</span>
               </LogoText>
             </LogoContainer>
 
             {!isMobile && (
-              <Box sx={{ display: 'flex', gap: 0.5 }}>
+              <Box sx={{ display: 'flex', gap: 1 }}>
                 {menuItems.map((item) => (
-                  <NavButton key={item.label} component={Link} to={item.path} onClick={() => {
-                    localStorage.removeItem('showNavbarCategories');
-                    setShowCategories(false);
-                  }}>
+                  <NavButton
+                    key={item.label}
+                    component={Link}
+                    to={item.path}
+                    startIcon={item.icon}
+                    onClick={() => {
+                      localStorage.removeItem('showNavbarCategories');
+                      setShowCategories(false);
+                    }}
+                  >
                     {item.label}
                   </NavButton>
                 ))}
@@ -272,196 +365,228 @@ function Navbar({ isAuthenticated, user, setIsAuthenticated, setUser }) {
 
           {/* Right Side: Actions */}
           {!isMobile ? (
-            <Box sx={{ display: 'flex', gap: 2, alignItems: 'center' }}>
+            <Box sx={{ display: 'flex', gap: 1.5, alignItems: 'center' }}>
 
-              {/* Bell Icon */}
+              {/* Bell Icon with Animation */}
               {isAuthenticated && (
-                <Tooltip title="Notifications">
-                  <IconButton
-                    onClick={handleNotifOpen}
-                    sx={{ color: '#5D6D7E', p: 1, '&:hover': { bgcolor: '#F2F7F9', color: '#4A9FBF' } }}
-                  >
-                    <Badge badgeContent={unreadCount} color="error" overlap="circular">
-                      <NotificationsNoneIcon sx={{ width: 24, height: 24 }} />
+                <Tooltip title="Notifications" arrow placement="bottom">
+                  <IconButtonStyled onClick={handleNotifOpen}>
+                    <Badge
+                      badgeContent={unreadCount}
+                      color="error"
+                      overlap="circular"
+                      sx={{
+                        '& .MuiBadge-badge': {
+                          animation: unreadCount > 0 ? 'pulse 1.5s infinite' : 'none',
+                        },
+                      }}
+                    >
+                      <NotificationsNoneIcon sx={{ width: 22, height: 22 }} />
                     </Badge>
-                  </IconButton>
+                  </IconButtonStyled>
                 </Tooltip>
               )}
 
-              {/* Notifications Menu */}
+              {/* Notifications Menu - Enhanced */}
               <Menu
                 anchorEl={anchorElNotif}
                 open={Boolean(anchorElNotif)}
                 onClose={handleNotifClose}
+                TransitionComponent={Fade}
                 transformOrigin={{ horizontal: 'right', vertical: 'top' }}
                 anchorOrigin={{ horizontal: 'right', vertical: 'bottom' }}
                 PaperProps={{
-                  sx: {
-                    borderRadius: 4,
-                    mt: 1.5,
-                    width: 320,
-                    maxHeight: 400,
-                    bgcolor: '#FFFFFF',
-                    border: '1px solid rgba(74, 159, 191, 0.15)',
-                    boxShadow: '0 10px 30px rgba(0,0,0,0.05)'
-                  }
+                  component: MenuPaper,
                 }}
               >
-                <Box px={2} py={1.5} display="flex" justifyContent="space-between" alignItems="center">
-                  <Typography variant="subtitle2" fontWeight={700} color="#1A6B8A">
+                <Box px={2.5} py={2} display="flex" justifyContent="space-between" alignItems="center" borderBottom="1px solid rgba(74, 159, 191, 0.1)">
+                  <Typography variant="subtitle1" fontWeight={800} color="#1A6B8A" letterSpacing="-0.3px">
                     Notifications
                   </Typography>
                   {notifications.length > 0 && unreadCount > 0 && (
-                    <Button size="small" onClick={handleMarkAllAsRead} sx={{ textTransform: 'none', fontSize: '0.7rem' }}>
-                      Mark all as read
+                    <Button
+                      size="small"
+                      onClick={handleMarkAllAsRead}
+                      sx={{
+                        textTransform: 'none',
+                        fontSize: '0.7rem',
+                        color: '#4A9FBF',
+                        fontWeight: 600,
+                        '&:hover': { backgroundColor: 'transparent', textDecoration: 'underline' }
+                      }}
+                    >
+                      Mark all read
                     </Button>
                   )}
                 </Box>
-                <Divider />
 
                 {notifications.length === 0 ? (
-                  <Box p={3} textAlign="center">
+                  <Box p={4} textAlign="center">
                     <Typography variant="body2" color="textSecondary">No notifications yet</Typography>
+                    <Typography variant="caption" color="textSecondary">We'll notify you when something arrives</Typography>
                   </Box>
                 ) : (
-                  <Box sx={{ maxHeight: 320, overflowY: 'auto' }}>
-                    {notifications.map((notif) => (
-                      <MenuItem
+                  <Box sx={{ maxHeight: 380, overflowY: 'auto' }}>
+                    {notifications.map((notif, index) => (
+                      <MenuItemStyled
                         key={notif.id}
                         onClick={() => handleMarkAsRead(notif.id)}
                         sx={{
-                          py: 1.5,
-                          px: 2,
-                          whiteSpace: 'normal',
-                          backgroundColor: notif.isRead ? 'transparent' : '#F0F9FF',
-                          borderBottom: '1px solid #F1F5F9',
-                          display: 'flex',
-                          flexDirection: 'column',
-                          alignItems: 'flex-start',
-                          gap: 0.5
+                          backgroundColor: notif.isRead ? 'transparent' : alpha('#4A9FBF', 0.04),
+                          borderBottom: index !== notifications.length - 1 ? '1px solid rgba(74, 159, 191, 0.05)' : 'none',
                         }}
                       >
-                        <Box display="flex" justifyContent="space-between" width="100%">
-                          <Typography variant="body2" sx={{ fontWeight: notif.isRead ? 400 : 600, color: '#2C3E50' }}>
+                        <Box sx={{ flex: 1 }}>
+                          <Typography variant="body2" sx={{ fontWeight: notif.isRead ? 500 : 700, color: '#2C3E50', mb: 0.5 }}>
                             {notif.type === 'ARTIST_APPROVAL' ? '🎉 Artist Verification' : '📢 Notification'}
                           </Typography>
-                          <IconButton
-                            size="small"
-                            onClick={(e) => { e.stopPropagation(); handleClearNotification(notif.id); }}
-                            sx={{ p: 0.5 }}
-                          >
-                            <CloseIcon sx={{ fontSize: 14, color: '#94A3B8' }} />
-                          </IconButton>
+                          <Typography variant="body2" sx={{ color: '#64748B', pr: 2, lineHeight: 1.4 }}>
+                            {notif.message}
+                          </Typography>
+                          <Typography variant="caption" sx={{ color: '#94A3B8', display: 'block', mt: 0.5 }}>
+                            {notif.timestamp}
+                          </Typography>
                         </Box>
-                        <Typography variant="body2" sx={{ color: '#475569', pr: 3 }}>
-                          {notif.message}
-                        </Typography>
-                        <Typography variant="caption" sx={{ color: '#94A3B8' }}>
-                          {notif.timestamp}
-                        </Typography>
-                      </MenuItem>
+                        <IconButton
+                          size="small"
+                          onClick={(e) => { e.stopPropagation(); handleClearNotification(notif.id); }}
+                          sx={{ color: '#94A3B8', '&:hover': { color: '#EF4444' } }}
+                        >
+                          <CloseIcon sx={{ fontSize: 14 }} />
+                        </IconButton>
+                      </MenuItemStyled>
                     ))}
                   </Box>
                 )}
               </Menu>
 
-              {/* Artist Button */}
+              {/* Artist Button - Enhanced */}
               <ArtistButton component={Link} to="/for-artists">
-                I'm an artist+
+                ✨ I'm an artist+
               </ArtistButton>
 
-              {/* Profile Dropdown */}
+              {/* Profile Dropdown - Enhanced */}
               <Box>
-                {!isAuthenticated ? (
-                  <IconButton
-                    onClick={handleMenuOpen}
-                    sx={{ color: '#4A9FBF', p: 0.5, border: '1px solid rgba(74, 159, 191, 0.2)', '&:hover': { bgcolor: '#F2F7F9' } }}
-                  >
-                    <AccountCircleIcon sx={{ width: 32, height: 32 }} />
-                  </IconButton>
-                ) : (
-                  <IconButton onClick={handleMenuOpen} sx={{ p: 0.5, border: '1px solid rgba(74, 159, 191, 0.2)' }}>
-                    <Avatar sx={{ bgcolor: '#4A9FBF', color: '#FFFFFF', width: 32, height: 32, fontSize: '0.9rem', fontWeight: 'bold' }}>
-                      {user?.fullName?.charAt(0) || user?.username?.charAt(0)}
-                    </Avatar>
-                  </IconButton>
-                )}
+                <Tooltip title={isAuthenticated ? "Account" : "Login"} arrow placement="bottom">
+                  <IconButtonStyled onClick={handleMenuOpen}>
+                    {!isAuthenticated ? (
+                      <AccountCircleIcon sx={{ width: 32, height: 32 }} />
+                    ) : (
+                      <Avatar
+                        sx={{
+                          bgcolor: 'transparent',
+                          background: 'linear-gradient(135deg, #4A9FBF 0%, #1A6B8A 100%)',
+                          width: 36,
+                          height: 36,
+                          fontSize: '1rem',
+                          fontWeight: 'bold',
+                          boxShadow: '0 2px 8px rgba(74, 159, 191, 0.2)',
+                        }}
+                      >
+                        {user?.fullName?.charAt(0) || user?.username?.charAt(0)}
+                      </Avatar>
+                    )}
+                  </IconButtonStyled>
+                </Tooltip>
 
                 <Menu
                   anchorEl={anchorEl}
                   open={Boolean(anchorEl)}
                   onClose={handleMenuClose}
+                  TransitionComponent={Fade}
                   transformOrigin={{ horizontal: 'right', vertical: 'top' }}
                   anchorOrigin={{ horizontal: 'right', vertical: 'bottom' }}
                   PaperProps={{
-                    sx: {
-                      borderRadius: 4,
-                      mt: 1.5,
-                      minWidth: 190,
-                      bgcolor: '#FFFFFF',
-                      border: '1px solid rgba(74, 159, 191, 0.15)',
-                      boxShadow: '0 10px 30px rgba(0,0,0,0.05)'
-                    }
+                    component: MenuPaper,
                   }}
                 >
                   {isAuthenticated ? (
                     <Box>
-                      <MenuItem component={Link} to="/profile" onClick={handleMenuClose} sx={{ fontSize: '0.9rem', fontWeight: 500 }}>
+                      <MenuItemStyled component={Link} to="/profile" onClick={handleMenuClose}>
+                        <PersonIcon sx={{ fontSize: 20, color: '#4A9FBF' }} />
                         Profile
+                      </MenuItemStyled>
+                      <MenuItemStyled component={Link} to="/messages" onClick={handleMenuClose}>
+                        <ChatIcon sx={{ fontSize: 20, color: '#4A9FBF' }} />
+                        Messages
+                      </MenuItemStyled>
+                      <MenuItemStyled component={Link} to="/cart" onClick={handleMenuClose}>
+                        <ShoppingCartIcon sx={{ fontSize: 20, color: '#4A9FBF' }} />
+                        Cart {cartCount > 0 && `(${cartCount})`}
+                      </MenuItemStyled>
+                      <MenuItemStyled component={Link} to="/my-commissions" onClick={handleMenuClose}>
+                        <BrushIcon sx={{ fontSize: 20, color: '#4A9FBF' }} />
+                        My Commissions
+                      </MenuItemStyled>
+                      <MenuItem component={Link} to="/my-purchases" onClick={handleMenuClose}>
+                        My Purchases
                       </MenuItem>
-                      <MenuItem component={Link} to="/messages" onClick={handleMenuClose} sx={{ fontSize: '0.9rem', fontWeight: 500 }}>
-                        💬 Messages
-                      </MenuItem>
-                      <MenuItem component={Link} to="/cart" onClick={handleMenuClose} sx={{ fontSize: '0.9rem', fontWeight: 500 }}>
-                        🛍️ Cart {cartCount > 0 && `(${cartCount})`}
-                      </MenuItem>
-                      <MenuItem component={Link} to="/my-commissions" onClick={handleMenuClose} sx={{ fontSize: '0.9rem', fontWeight: 500 }}>
-                        🎨 My Commissions
-                      </MenuItem>
-                      <Divider />
-                      <MenuItem onClick={handleLogout} sx={{ fontSize: '0.9rem', fontWeight: 600, color: '#E74C3C' }}>
+
+                      {/* Creator Dashboard - hanya untuk artist terverifikasi */}
+                      {user?.isVerified === true && (
+                        <MenuItemStyled component={Link} to="/profile?tab=creator" onClick={handleMenuClose}>
+                          <DashboardIcon sx={{ fontSize: 20, color: '#4A9FBF' }} />
+                          Creator Dashboard
+                        </MenuItemStyled>
+                      )}
+
+                      <Divider sx={{ my: 1, borderColor: 'rgba(74, 159, 191, 0.1)' }} />
+                      <MenuItemStyled onClick={handleLogout} sx={{ color: '#E74C3C' }}>
+                        <LogoutIcon sx={{ fontSize: 20 }} />
                         Log out
-                      </MenuItem>
+                      </MenuItemStyled>
                     </Box>
                   ) : (
                     <Box>
-                      <MenuItem onClick={() => { navigate('/login'); handleMenuClose(); }} sx={{ fontSize: '0.9rem', fontWeight: 600, color: '#1A6B8A' }}>
+                      <MenuItemStyled onClick={() => { navigate('/login'); handleMenuClose(); }} sx={{ color: '#1A6B8A', fontWeight: 700 }}>
+                        <PersonIcon sx={{ fontSize: 20 }} />
                         Login
-                      </MenuItem>
-                      <MenuItem onClick={() => { navigate('/register'); handleMenuClose(); }} sx={{ fontSize: '0.9rem', fontWeight: 500 }}>
+                      </MenuItemStyled>
+                      <MenuItemStyled onClick={() => { navigate('/register'); handleMenuClose(); }}>
                         Sign Up
-                      </MenuItem>
+                      </MenuItemStyled>
                     </Box>
                   )}
                 </Menu>
               </Box>
             </Box>
           ) : (
-            /* Mobile Menu */
+            /* Mobile Menu - Enhanced */
             <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
               {isAuthenticated && (
-                <IconButton onClick={handleNotifOpen} sx={{ color: '#5D6D7E' }}>
+                <IconButtonStyled onClick={handleNotifOpen}>
                   <Badge badgeContent={unreadCount} color="error">
                     <NotificationsNoneIcon />
                   </Badge>
-                </IconButton>
+                </IconButtonStyled>
               )}
-              <IconButton onClick={() => setMobileOpen(true)} sx={{ color: '#1A6B8A' }}>
+              <IconButtonStyled onClick={() => setMobileOpen(true)}>
                 <MenuIcon />
-              </IconButton>
+              </IconButtonStyled>
             </Box>
           )}
         </Toolbar>
 
-        {/* Category Sub-navbar */}
+        {/* Category Sub-navbar - Enhanced */}
         {!isMobile && showCategories && (
           <Box sx={{
             display: 'flex',
-            gap: 1,
+            gap: 0.5,
             py: 1,
-            borderTop: '1px solid rgba(74, 159, 191, 0.08)',
+            px: 1,
+            borderTop: '1px solid rgba(74, 159, 191, 0.06)',
             overflowX: 'auto',
-            justifyContent: 'flex-start'
+            justifyContent: 'flex-start',
+            '&::-webkit-scrollbar': {
+              height: '4px',
+            },
+            '&::-webkit-scrollbar-track': {
+              backgroundColor: 'transparent',
+            },
+            '&::-webkit-scrollbar-thumb': {
+              backgroundColor: '#CBD5E1',
+              borderRadius: '10px',
+            },
           }}>
             {categories.map((cat) => (
               <CategoryButton key={cat.label} component={Link} to={cat.path}>
@@ -472,15 +597,19 @@ function Navbar({ isAuthenticated, user, setIsAuthenticated, setUser }) {
         )}
       </Container>
 
-      {/* Mobile Drawer */}
+      {/* Mobile Drawer - Enhanced */}
       <Drawer anchor="right" open={mobileOpen} onClose={() => setMobileOpen(false)}>
-        <Box sx={{ width: 280, p: 2, bgcolor: '#FFFFFF', height: '100%' }}>
-          <Box sx={{ display: 'flex', justifyContent: 'flex-end', mb: 2 }}>
-            <IconButton onClick={() => setMobileOpen(false)} sx={{ color: '#1A6B8A' }}>
+        <Box sx={{ width: 300, p: 2.5, bgcolor: '#FFFFFF', height: '100%' }}>
+          <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 3 }}>
+            <LogoText variant="h6" sx={{ fontSize: '1.3rem' }}>
+              Crearts<span style={{ color: '#4A9FBF' }}>I</span>
+            </LogoText>
+            <IconButtonStyled onClick={() => setMobileOpen(false)}>
               <CloseIcon />
-            </IconButton>
+            </IconButtonStyled>
           </Box>
-          <List>
+
+          <List sx={{ py: 0 }}>
             {menuItems.map((item) => (
               <ListItem
                 button
@@ -488,17 +617,30 @@ function Navbar({ isAuthenticated, user, setIsAuthenticated, setUser }) {
                 component={Link}
                 to={item.path}
                 onClick={() => setMobileOpen(false)}
-                sx={{ borderRadius: 2, mb: 1, color: '#5D6D7E' }}
+                sx={{
+                  borderRadius: 3,
+                  mb: 1,
+                  color: '#5D6D7E',
+                  py: 1.5,
+                  '&:hover': { backgroundColor: alpha('#4A9FBF', 0.08), color: '#4A9FBF' }
+                }}
               >
-                <ListItemText primary={item.label} sx={{ primaryTypographyProps: { fontWeight: 600 } }} />
+                <ListItemText
+                  primary={item.label}
+                  sx={{
+                    primaryTypographyProps: { fontWeight: 600, fontSize: '1rem' }
+                  }}
+                />
               </ListItem>
             ))}
 
             {showCategories && (
               <>
-                <Divider sx={{ my: 1 }} />
-                <Box px={2} py={0.5}>
-                  <Typography variant="caption" fontWeight={700} color="rgba(74, 159, 191, 0.6)">CATEGORIES</Typography>
+                <Divider sx={{ my: 2, borderColor: 'rgba(74, 159, 191, 0.1)' }} />
+                <Box px={1} py={0.5} mb={1}>
+                  <Typography variant="caption" fontWeight={700} color="#4A9FBF" letterSpacing="0.5px">
+                    CATEGORIES
+                  </Typography>
                 </Box>
                 {categories.map((cat) => (
                   <ListItem
@@ -507,23 +649,61 @@ function Navbar({ isAuthenticated, user, setIsAuthenticated, setUser }) {
                     component={Link}
                     to={cat.path}
                     onClick={() => setMobileOpen(false)}
-                    sx={{ borderRadius: 2, mb: 0.5, color: '#5D6D7E', pl: 3 }}
+                    sx={{
+                      borderRadius: 2,
+                      mb: 0.5,
+                      color: '#5D6D7E',
+                      pl: 3,
+                      py: 1,
+                      '&:hover': { backgroundColor: alpha('#4A9FBF', 0.05), color: '#4A9FBF' }
+                    }}
                   >
-                    <ListItemText primary={cat.label} sx={{ primaryTypographyProps: { fontSize: '0.9rem', fontWeight: 500 } }} />
+                    <ListItemText
+                      primary={cat.label}
+                      sx={{
+                        primaryTypographyProps: { fontSize: '0.9rem', fontWeight: 500 }
+                      }}
+                    />
                   </ListItem>
                 ))}
               </>
             )}
-            <Divider sx={{ my: 1 }} />
+
+            <Divider sx={{ my: 2, borderColor: 'rgba(74, 159, 191, 0.1)' }} />
 
             {isAuthenticated && (
-              <ListItem button onClick={handleLogout} sx={{ borderRadius: 2, color: '#E74C3C' }}>
-                <ListItemText primary="Log out" sx={{ primaryTypographyProps: { fontWeight: 600 } }} />
+              <ListItem
+                button
+                onClick={handleLogout}
+                sx={{
+                  borderRadius: 3,
+                  color: '#E74C3C',
+                  py: 1.5,
+                  mt: 1,
+                  '&:hover': { backgroundColor: alpha('#E74C3C', 0.08) }
+                }}
+              >
+                <ListItemText
+                  primary="Log out"
+                  sx={{ primaryTypographyProps: { fontWeight: 700 } }}
+                />
               </ListItem>
             )}
           </List>
         </Box>
       </Drawer>
+
+      {/* CSS Animation */}
+      <style jsx>{`
+        @keyframes pulse {
+          0%, 100% {
+            transform: scale(1);
+          }
+          50% {
+            transform: scale(1.1);
+          }
+        }
+      `}</style>
     </StyledAppBar>
   );
 }

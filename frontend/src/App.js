@@ -4,6 +4,7 @@ import { BrowserRouter as Router, Routes, Route, Navigate } from 'react-router-d
 import { ThemeProvider, createTheme } from '@mui/material/styles';
 import CssBaseline from '@mui/material/CssBaseline';
 import Navbar from './components/Navbar';
+// App.js - Pastikan import seperti ini
 import HomePage from './components/HomePage';
 import ArtistList from './components/ArtistList';
 import ArtistDetail from './components/ArtistDetail';
@@ -15,8 +16,11 @@ import ArtistRegisterForm from './components/ArtistRegisterForm';
 import CategoryPage from './components/CategoryPage';
 import MessagesPage from './components/MessagesPage';
 import CartPage from './components/CartPage';
+import ShopPage from './components/ShopPage';
+import MyPurchasesPage from './components/MyPurchasesPage';
+import ArtistProfilePage from './components/ArtistProfilePage';
 
-// admin package imports
+// Admin packages
 import AdminDashboard from './components/admin/AdminDashboard';
 import ProtectedRoute from './components/ProtectedRoute';
 
@@ -152,6 +156,14 @@ function App() {
             </PrivateRoute>
           } />
 
+          //shop
+           <Route path="/shop" element={<ShopPage />} />
+           <Route path="/my-purchases" element={
+             <PrivateRoute isAuthenticated={isAuthenticated}>
+               <MyPurchasesPage />
+             </PrivateRoute>
+           } />
+
           //chat
           <Route
             path="/messages"
@@ -171,6 +183,8 @@ function App() {
               </PrivateRoute>
             }
           />
+
+          <Route path="/artist/:artistId" element={<ArtistProfilePage />} />
 
           {/* Halaman Commission List - WAJIB LOGIN */}
           <Route

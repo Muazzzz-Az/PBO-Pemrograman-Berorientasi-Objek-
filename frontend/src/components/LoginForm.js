@@ -1,11 +1,7 @@
+// src/components/LoginForm.js
 import React, { useState } from 'react';
 import { useNavigate, Link } from 'react-router-dom';
 
-// ==========================================
-// 1. ABSTRACTION & POLYMORPHISM COMPONENT
-// BaseInput menyembunyikan detail tag <input> HTML bawaan (Abstraction).
-// Karakteristiknya berubah dinamis mengikuti kebutuhan tipe data (Polymorphism).
-// ==========================================
 const BaseInput = ({ label, type = 'text', name, value, onChange, placeholder, required = true }) => {
     return (
         <div style={{ marginBottom: '18px', width: '100%' }}>
@@ -45,11 +41,6 @@ const BaseInput = ({ label, type = 'text', name, value, onChange, placeholder, r
     );
 };
 
-// ==========================================
-// 2. ENCAPSULATION COMPONENT
-// LoginForm mengemas state keamanan autentikasi, status error,
-// dan penanganan form submit dalam satu kesatuan aman.
-// ==========================================
 function LoginForm({ setIsAuthenticated, setUser }) {
     const navigate = useNavigate();
 
@@ -81,9 +72,9 @@ function LoginForm({ setIsAuthenticated, setUser }) {
             const data = await response.json();
 
             if (response.ok) {
-                // Proteksi pengecekan status verifikasi seniman sebelum diberikan akses masuk
-                if (data.user.role === 'Artist' && !data.user.isVerified) {
-                    setError('Akun Seniman Anda sedang dalam proses verifikasi oleh Admin. Mohon tunggu.');
+                // ONLY verified artists can login as artist
+                if (data.user.role === 'artist' && data.user.isVerified !== true) {
+                    setError('Your artist account is pending verification. Please wait for admin approval.');
                     return;
                 }
 
@@ -93,11 +84,11 @@ function LoginForm({ setIsAuthenticated, setUser }) {
                 setUser(data.user);
                 navigate('/');
             } else {
-                setError(data.message || 'Username atau password salah.');
+                setError(data.message || 'Invalid username or password.');
             }
         } catch (error) {
             console.error('Login error:', error);
-            setError('Koneksi gagal. Silakan coba lagi nanti.');
+            setError('Connection failed. Please try again later.');
         }
     };
 
@@ -124,10 +115,10 @@ function LoginForm({ setIsAuthenticated, setUser }) {
             }}>
                 <form onSubmit={handleSubmit}>
                     <h2 style={{ color: '#1A6B8A', margin: '0 0 6px 0', fontWeight: 800, fontSize: '1.8rem' }}>
-                        Selamat Datang Kembali
+                        Welcome Back
                     </h2>
                     <p style={{ color: '#5D6D7E', fontSize: '0.95rem', margin: '0 0 32px 0' }}>
-                        Silakan masuk ke akun CreartsI Anda
+                        Please login to your CreartsI account
                     </p>
 
                     {error && (
@@ -145,14 +136,12 @@ function LoginForm({ setIsAuthenticated, setUser }) {
                         </div>
                     )}
 
-                    {/* 3. IMPLEMENTASI INHERITANCE */}
-                    {/* Menggunakan kembali komponen BaseInput sehingga mewarisi properti dasar */}
                     <BaseInput
                         label="Username"
                         name="username"
                         value={formData.username}
                         onChange={handleChange}
-                        placeholder="Masukkan username"
+                        placeholder="Enter your username"
                     />
 
                     <BaseInput
@@ -161,7 +150,7 @@ function LoginForm({ setIsAuthenticated, setUser }) {
                         name="password"
                         value={formData.password}
                         onChange={handleChange}
-                        placeholder="Masukkan password"
+                        placeholder="Enter your password"
                     />
 
                     <button type="submit" style={{
@@ -180,13 +169,13 @@ function LoginForm({ setIsAuthenticated, setUser }) {
                     onMouseOver={(e) => e.target.style.backgroundColor = '#1A6B8A'}
                     onMouseOut={(e) => e.target.style.backgroundColor = '#4A9FBF'}
                     >
-                        Masuk
+                        Login
                     </button>
 
-                    <p style={{ textAlign: 'center', marginTop: '24px', fontSize: '0.9rem', color: '#5D6D7E', margin: '24px 0 0 0' }}>
-                        Belum punya akun?{' '}
+                    <p style={{ textAlign: 'center', marginTop: '24px', fontSize: '0.9rem', color: '#5D6D7E' }}>
+                        Don't have an account?{' '}
                         <Link to="/register" style={{ color: '#4A9FBF', fontWeight: 600, textDecoration: 'none' }}>
-                            Daftar di sini
+                            Sign up here
                         </Link>
                     </p>
                 </form>
