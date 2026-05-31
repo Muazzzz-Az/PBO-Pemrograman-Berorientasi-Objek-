@@ -1,4 +1,4 @@
-// App.js - Modified Version
+// App.js - Modified Version (TANPA AUTO LOGIN)
 import React, { useState, useEffect } from 'react';
 import { BrowserRouter as Router, Routes, Route, Navigate } from 'react-router-dom';
 import { ThemeProvider, createTheme } from '@mui/material/styles';
@@ -82,24 +82,13 @@ const pastelOceanTheme = createTheme({
 });
 
 function App() {
-  // 1. CEK LOKASI DEVELOPMENT
-  const isLocalhost = window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1';
+  // ========== HAPUS SEMUA AUTO LOGIN ==========
+  // State awal: selalu false (belum login)
+  const [isAuthenticated, setIsAuthenticated] = useState(false);
+  const [user, setUser] = useState(null);
 
-  // 2. STATE AWAL: Jika di localhost, langsung bypass status login sebagai admin
-  const [isAuthenticated, setIsAuthenticated] = useState(isLocalhost ? true : false);
-  const [user, setUser] = useState(isLocalhost ? {
-    username: 'naiii',
-    fullName: 'Nailah Salmah',
-    role: 'admin',
-    bio: 'Suka coding web backend & suka main game horror hwhw. 🎨✨',
-    avatarUrl: '',
-    bannerUrl: ''
-  } : null);
-
-  // 3. JALUR PRODUKSI: Tetap membaca localStorage jika aplikasi sudah di-deploy/online
+  // Cek localStorage saat pertama kali load (tanpa bypass apapun)
   useEffect(() => {
-    if (isLocalhost) return; // Lewati pengecekan jika masih di localhost
-
     const token = localStorage.getItem('token');
     const savedUser = localStorage.getItem('user');
 
@@ -112,16 +101,13 @@ function App() {
         console.error("Error parsing user data from localStorage", error);
       }
     }
-  }, [isLocalhost]);
+  }, []);
 
   // Fungsi tambahan agar saat user edit profil, local storage ikut ter-update
   const handleUpdateUser = (updatedUser) => {
     setUser(updatedUser);
     localStorage.setItem('user', JSON.stringify(updatedUser));
   };
-
-  // Daftar route yang BOLEH diakses TANPA login (PUBLIC ROUTES)
-  const publicRoutes = ['/', '/login', '/register', '/for-artists'];
 
   return (
     <ThemeProvider theme={pastelOceanTheme}>

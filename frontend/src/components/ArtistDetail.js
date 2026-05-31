@@ -1,189 +1,669 @@
-import React, { useState, useEffect } from 'react';
-import { useParams, Link } from 'react-router-dom';
+// ArtistDetail.js - Fixed with Real Data
+import React, { useState, useEffect, useRef } from 'react';
+import { useParams, Link, useNavigate } from 'react-router-dom';
 import {
-    Box, Container, Grid, Card, CardContent, Typography, Avatar, Chip, Button, IconButton,
-    Dialog, DialogTitle, DialogContent, DialogActions, TextField, MenuItem
+  Box, Container, Grid, Card, CardContent, Typography, Avatar, Chip, Button, IconButton,
+  Dialog, DialogTitle, DialogContent, DialogActions, TextField, MenuItem,
+  Tabs, Tab, Divider, Rating, Stack, Alert, Snackbar, CircularProgress,
+  InputAdornment, Checkbox, FormControlLabel
 } from '@mui/material';
-import InstagramIcon from '@mui/icons-material/Instagram';
-import YouTubeIcon from '@mui/icons-material/YouTube';
-import LanguageIcon from '@mui/icons-material/Language';
 import ArrowBackIcon from '@mui/icons-material/ArrowBack';
-import ChatBox from './ChatBox';
+import ShoppingCartIcon from '@mui/icons-material/ShoppingCart';
+import ChatIcon from '@mui/icons-material/Chat';
+import CloseIcon from '@mui/icons-material/Close';
+import UploadFileIcon from '@mui/icons-material/UploadFile';
+import AddLinkIcon from '@mui/icons-material/AddLink';
+import VerifiedIcon from '@mui/icons-material/Verified';
+import InstagramIcon from '@mui/icons-material/Instagram';
+import LanguageIcon from '@mui/icons-material/Language';
 
-// IMPLEMENTASI ABSTRAKSI OOP: Import instance dari Service Layer
-import { artistService } from '../api/ArtistService';
-import { commissionService } from '../api/CommissionService';
+// ==========================================
+// GET REAL DATA FROM LOCALSTORAGE
+// ==========================================
+const getArtistCommissions = () => {
+  const saved = localStorage.getItem('creartsi_artist_commissions');
+  return saved ? JSON.parse(saved) : [];
+};
+
+const getArtists = () => {
+  const saved = localStorage.getItem('kreartsi_artists');
+  return saved ? JSON.parse(saved) : [];
+};
+
+const getPortfolio = () => {
+  const saved = localStorage.getItem('creartsi_artist_portfolio');
+  return saved ? JSON.parse(saved) : [];
+};
 
 function ArtistDetail() {
-    const { id } = useParams();
-    const [artist, setArtist] = useState(null);
-    const [artworks, setArtworks] = useState([]);
-    const [loading, setLoading] = useState(true);
+  const { id } = useParams();
+  const navigate = useNavigate();
 
-    const [openModal, setOpenModal] = useState(false);
-    const [commissionData, setCommissionData] = useState({
-        title: '', category: '', price: '', description: '', imageUrl: ''
-    });
+  // State untuk data artist dan commission
+  const [commission, setCommission] = useState(null);
+  const [artist, setArtist] = useState(null);
+  const [loading, setLoading] = useState(true);
+  const [activeTab, setActiveTab] = useState(0);
+  const [artistPortfolio, setArtistPortfolio] = useState([]);
 
-    const handleOpenModal = () => setOpenModal(true);
-    const handleCloseModal = () => setOpenModal(false);
+  // Request Modal
+  const [openRequest, setOpenRequest] = useState(false);
+  const [requestStep, setRequestStep] = useState(1);
+  const [submitting, setSubmitting] = useState(false);
 
-    // DELEGASI OOP: Menyimpan Komisi
-    const handleCommissionSubmit = async () => {
-        try {
-            const payload = {
-                title: commissionData.title,
-                category: commissionData.category,
-                price: parseFloat(commissionData.price),
-                description: commissionData.description,
-                imageUrl: commissionData.imageUrl
-            };
-            
-            // Memanggil method 'create' yang diwarisi dari BaseApiService
-            await commissionService.create(payload);
-            
-            alert("Pemesanan Komisi Berhasil Dikirim ke Seniman!");
-            setOpenModal(false);
-            setCommissionData({ title: '', category: '', price: '', description: '', imageUrl: '' });
-        } catch (error) {
-            console.error('Error submitting commission:', error);
-            alert("Gagal mengirim komisi. Pastikan backend menyala.");
-        }
-    };
+  // Chat Modal
+  const [openChat, setOpenChat] = useState(false);
+  const [chatMessage, setChatMessage] = useState('');
+  const [chatHistory, setChatHistory] = useState([]);
+  const messagesEndRef = useRef(null);
 
-    const currentUser = JSON.parse(localStorage.getItem('user'));
+  // Notifikasi
+  const [snackbar, setSnackbar] = useState({ open: false, message: '', severity: 'success' });
 
-    useEffect(() => {
-        const fetchAllData = async () => {
-            try {
-                // DELEGASI OOP: Menarik data secara paralel menggunakan Promise.all untuk Big O yang lebih efisien
-                const [artistData, artworksData] = await Promise.all([
-                    artistService.getById(id),
-                    artistService.getArtworksByArtist(id)
-                ]);
-                
-                setArtist(artistData);
-                setArtworks(artworksData);
-            } catch (error) {
-                console.error("Gagal menarik data profil", error);
-            } finally {
-                setLoading(false);
-            }
-        };
+  const currentUser = JSON.parse(localStorage.getItem('user'));
+  const isLoggedIn = !!currentUser;
 
-        fetchAllData();
-    }, [id]);
+  // Request Form Data
+  const [requestData, setRequestData] = useState({
+    email: currentUser?.email || '',
+    twitter: '', instagram: '', twitch: '', youtube: '',
+    usage: '', commercialQuantity: 0, references: '', canStream: '',
+    deadline: '', paymentMethod: '', extraInfo: '', agreeTerms: false
+  });
 
-    if (loading || !artist) {
-        return (
-            <Box display="flex" justifyContent="center" alignItems="center" minHeight="50vh">
-                <Typography color="text.secondary">Memuat detail profil seniman...</Typography>
-            </Box>
-        );
+  const [uploadedFiles, setUploadedFiles] = useState([]);
+  const [uploadedLinks, setUploadedLinks] = useState([]);
+  const [newLink, setNewLink] = useState('');
+
+  const showNotification = (message, severity = 'success') => {
+    setSnackbar({ open: true, message, severity });
+  };
+
+  const requireLogin = () => {
+    if (!isLoggedIn) {
+      showNotification('Please login first to continue', 'warning');
+      setTimeout(() => navigate('/login'), 1500);
+      return false;
+    }
+    return true;
+  };
+
+  const handleOpenRequest = () => {
+    if (!requireLogin()) return;
+    setOpenRequest(true);
+    setRequestStep(1);
+  };
+
+  const handleFileUpload = (e) => {
+    const files = Array.from(e.target.files);
+    const newFiles = files.map(file => ({
+      id: Date.now() + Math.random(),
+      name: file.name,
+      size: file.size
+    }));
+    setUploadedFiles([...uploadedFiles, ...newFiles]);
+  };
+
+  const removeFile = (id) => {
+    setUploadedFiles(uploadedFiles.filter(f => f.id !== id));
+  };
+
+  const addLink = () => {
+    if (newLink.trim()) {
+      setUploadedLinks([...uploadedLinks, { id: Date.now(), url: newLink }]);
+      setNewLink('');
+    }
+  };
+
+  const removeLink = (id) => {
+    setUploadedLinks(uploadedLinks.filter(l => l.id !== id));
+  };
+
+  const handleSubmitRequest = async () => {
+    if (!requestData.agreeTerms) {
+      showNotification('Please agree to the Terms of Service', 'warning');
+      return;
     }
 
+    setSubmitting(true);
+    setRequestStep(2);
+
+    setTimeout(() => {
+      const newRequest = {
+        id: Date.now(),
+        commissionId: id,
+        artistId: artist?.id || commission?.artistId,
+        artistName: artist?.artistName || commission?.artistName,
+        buyerId: currentUser.id,
+        buyerName: currentUser.fullName,
+        buyerEmail: requestData.email,
+        socialMedia: { twitter: requestData.twitter, instagram: requestData.instagram, twitch: requestData.twitch, youtube: requestData.youtube },
+        usage: requestData.usage,
+        references: requestData.references,
+        files: uploadedFiles,
+        links: uploadedLinks,
+        canStream: requestData.canStream,
+        deadline: requestData.deadline,
+        paymentMethod: requestData.paymentMethod,
+        extraInfo: requestData.extraInfo,
+        status: 'pending',
+        createdAt: new Date().toISOString()
+      };
+
+      const requests = JSON.parse(localStorage.getItem('commission_requests') || '[]');
+      requests.push(newRequest);
+      localStorage.setItem('commission_requests', JSON.stringify(requests));
+
+      setSubmitting(false);
+      setRequestStep(3);
+
+      setTimeout(() => {
+        setOpenRequest(false);
+        setRequestStep(1);
+        setRequestData({
+          email: currentUser?.email || '',
+          twitter: '', instagram: '', twitch: '', youtube: '',
+          usage: '', commercialQuantity: 0, references: '', canStream: '',
+          deadline: '', paymentMethod: '', extraInfo: '', agreeTerms: false
+        });
+        setUploadedFiles([]);
+        setUploadedLinks([]);
+        showNotification('Request submitted successfully!', 'success');
+      }, 2000);
+    }, 1500);
+  };
+
+  // Chat handlers
+  useEffect(() => {
+    if (!isLoggedIn || !openChat) return;
+    const roomId = `chat_${Math.min(currentUser?.id, artist?.id || commission?.artistId)}_${Math.max(currentUser?.id, artist?.id || commission?.artistId)}`;
+    const savedChat = localStorage.getItem(`chat_${roomId}`);
+    if (savedChat) {
+      setChatHistory(JSON.parse(savedChat));
+    }
+  }, [isLoggedIn, openChat, artist, commission]);
+
+  useEffect(() => {
+    messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
+  }, [chatHistory]);
+
+  const handleSendMessage = () => {
+    if (!chatMessage.trim()) return;
+
+    const artistId = artist?.id || commission?.artistId;
+    const roomId = `chat_${Math.min(currentUser?.id, artistId)}_${Math.max(currentUser?.id, artistId)}`;
+    const newMessage = {
+      id: Date.now(),
+      text: chatMessage,
+      senderId: currentUser.id,
+      senderName: currentUser.fullName,
+      timestamp: new Date().toISOString()
+    };
+
+    const savedChat = JSON.parse(localStorage.getItem(`chat_${roomId}`) || '[]');
+    savedChat.push(newMessage);
+    localStorage.setItem(`chat_${roomId}`, JSON.stringify(savedChat));
+    setChatHistory([...chatHistory, newMessage]);
+    setChatMessage('');
+  };
+
+  // LOAD DATA - Fix ini yang paling penting!
+  useEffect(() => {
+    const loadData = () => {
+      setLoading(true);
+
+      // Ambil semua commission
+      const commissions = getArtistCommissions();
+      const artists = getArtists();
+      const portfolios = getPortfolio();
+
+      // Cari commission berdasarkan ID dari URL
+      const foundCommission = commissions.find(c => c.id === parseInt(id));
+
+      if (foundCommission) {
+        setCommission(foundCommission);
+
+        // Cari artist berdasarkan nama atau artistId
+        const foundArtist = artists.find(a =>
+          a.name === foundCommission.artistName ||
+          a.id === foundCommission.artistId
+        );
+
+        if (foundArtist) {
+          setArtist(foundArtist);
+        } else {
+          // Fallback artist data
+          setArtist({
+            id: foundCommission.artistId || Date.now(),
+            artistName: foundCommission.artistName || 'Artist',
+            username: foundCommission.artistName?.toLowerCase().replace(/ /g, '') || 'artist',
+            bio: foundCommission.description || 'Professional artist specializing in custom commissions.',
+            rating: 4.9,
+            totalReviews: 24,
+            profilePicture: 'https://i.pravatar.cc/150?img=1',
+            instagram: '',
+            portfolio: '',
+            defaultPrice: foundCommission.priceFrom || 500000
+          });
+        }
+
+        // Cari portfolio untuk artist ini
+        const artistPortfolioItems = portfolios.filter(p =>
+          p.artistName === foundCommission.artistName
+        );
+        setArtistPortfolio(artistPortfolioItems);
+      } else {
+        // Jika commission tidak ditemukan, buat data dummy untuk testing
+        setCommission({
+          id: parseInt(id),
+          title: 'Commission Package',
+          category: 'Illustrations',
+          description: 'Custom illustration service',
+          priceFrom: 18000,
+          priceTo: null,
+          turnaround: '7-14 days',
+          revisions: 2,
+          slots: 5,
+          slotsLeft: 5,
+          isOpen: true,
+          coverImage: 'https://images.unsplash.com/photo-1618005182384-a83a8bd57fbe?w=600',
+          includes: ['Illustrations'],
+          artistName: 'Nailum Studio',
+          artistId: 1
+        });
+
+        setArtist({
+          id: 1,
+          artistName: 'Nailum Studio',
+          username: 'nailumstudio',
+          bio: 'Professional illustrator specializing in anime and fantasy art. Open for commissions!',
+          rating: 5.0,
+          totalReviews: 186,
+          profilePicture: 'https://i.pravatar.cc/150?img=1',
+          instagram: '@nailumstudio',
+          portfolio: 'https://nailumstudio.com',
+          defaultPrice: 18000
+        });
+      }
+
+      setLoading(false);
+    };
+
+    loadData();
+  }, [id]);
+
+  if (loading || !commission || !artist) {
     return (
-        <Container maxWidth="lg" style={{ marginTop: '30px', marginBottom: '50px' }}>
-            <Button component={Link} to="/artists" startIcon={<ArrowBackIcon />} style={{ marginBottom: '25px', color: '#1A6B8A', fontWeight: 700 }}>
-                Kembali ke Daftar
-            </Button>
+      <Box display="flex" justifyContent="center" alignItems="center" minHeight="50vh">
+        <CircularProgress sx={{ color: '#4A9FBF' }} />
+      </Box>
+    );
+  }
 
-            <Card style={{ marginBottom: '40px', border: '1px solid rgba(74, 159, 191, 0.15)' }}>
-                <Box sx={{ height: '160px', backgroundColor: 'rgba(74, 159, 191, 0.15)' }} />
-                <CardContent style={{ padding: '30px', marginTop: '-80px' }}>
-                    <Grid container spacing={3} alignItems="flex-end">
-                        <Grid item>
-                            <Avatar src={artist.profilePicture} alt={artist.artistName} style={{ width: '130px', height: '130px', border: '5px solid #FFFFFF', boxShadow: '0 8px 24px rgba(0,0,0,0.08)', backgroundColor: '#4A9FBF', fontSize: '3rem' }}>
-                                {artist.artistName?.charAt(0) || '🎭'}
-                            </Avatar>
-                        </Grid>
-                        <Grid item xs={12} sm>
-                            <Box display="flex" alignItems="center" gap={2} flexWrap="wrap">
-                                <Typography variant="h3" style={{ fontSize: '2rem', margin: 0, fontWeight: 800 }}>{artist.artistName}</Typography>
-                                <Chip label={artist.artCategory || "General"} style={{ backgroundColor: '#E6F5E5', color: '#1A6B8A', fontWeight: 700 }} />
-                            </Box>
-                            <Typography variant="body1" color="text.secondary" style={{ marginTop: '4px' }}>{artist.fullName}</Typography>
+  return (
+    <Container maxWidth="lg" sx={{ py: 4 }}>
+      {/* Back Button */}
+      <Button component={Link} to="/artists" startIcon={<ArrowBackIcon />} sx={{ mb: 3, color: '#1A6B8A', fontWeight: 600 }}>
+        Back to Artists
+      </Button>
 
-                            <Box display="flex" gap={1} mt={2}>
-                                {artist.instagram && <IconButton component="a" href={artist.instagram} target="_blank" style={{ color: '#E1306C' }}><InstagramIcon /></IconButton>}
-                                {artist.youtube && <IconButton component="a" href={artist.youtube} target="_blank" style={{ color: '#FF0000' }}><YouTubeIcon /></IconButton>}
-                                {artist.portfolio && <IconButton component="a" href={artist.portfolio} target="_blank" style={{ color: '#4A9FBF' }}><LanguageIcon /></IconButton>}
-                            </Box>
-                        </Grid>
-                        <Grid item xs={12} sm="auto">
-                            <Box display="flex" gap={2}>
-                                <Button variant="outlined" color="primary" style={{ borderWidth: '2px' }}>Ikuti Seniman</Button>
-                                <Button variant="contained" color="primary" onClick={handleOpenModal} style={{ color: '#FFFFFF' }}>Hubungi / Komisi</Button>
-                            </Box>
-                        </Grid>
-                    </Grid>
-                </CardContent>
-            </Card>
+      {/* Main Commission Detail Card */}
+      <Grid container spacing={4}>
+        {/* LEFT COLUMN - IMAGE */}
+        <Grid item xs={12} md={6}>
+          <Card sx={{ borderRadius: '24px', overflow: 'hidden' }}>
+            <Box sx={{ position: 'relative', pt: '100%', bgcolor: '#F1F5F9' }}>
+              <img
+                src={commission.coverImage}
+                alt={commission.title}
+                style={{
+                  position: 'absolute',
+                  top: 0,
+                  left: 0,
+                  width: '100%',
+                  height: '100%',
+                  objectFit: 'cover'
+                }}
+              />
+              <Chip
+                label="OPEN"
+                size="small"
+                sx={{
+                  position: 'absolute',
+                  top: 16,
+                  left: 16,
+                  bgcolor: '#10B981',
+                  color: 'white',
+                  fontWeight: 700,
+                  borderRadius: '20px'
+                }}
+              />
+            </Box>
+          </Card>
+        </Grid>
 
-            <Grid container spacing={4}>
-                <Grid item xs={12} md={4}>
-                    <Card style={{ padding: '24px', marginBottom: '24px' }}>
-                        <Typography variant="h5" style={{ fontSize: '1.2rem', fontWeight: 800, marginBottom: '16px' }}>Tentang Seniman</Typography>
-                        <Typography variant="body2" color="text.secondary" style={{ lineHeight: 1.6 }}>{artist.bio || "Seniman ini belum menambahkan biodata rincian profil."}</Typography>
-                    </Card>
-                    <Box mt={3}>
-                        <ChatBox artistId={id} artistName={artist.artistName} currentUser={currentUser} />
-                    </Box>
-                </Grid>
+        {/* RIGHT COLUMN - DETAILS */}
+        <Grid item xs={12} md={6}>
+          <Card sx={{ borderRadius: '24px', p: 3 }}>
+            <Typography variant="caption" sx={{ color: '#4A9FBF', fontWeight: 700, letterSpacing: '0.5px' }}>
+              {commission.category}
+            </Typography>
 
-                <Grid item xs={12} md={8}>
-                    <Typography variant="h4" style={{ fontSize: '1.5rem', fontWeight: 800, marginBottom: '20px' }}>Karya Seni Terbaru</Typography>
-                    {artworks.length > 0 ? (
-                        <Grid container spacing={3}>
-                            {artworks.map(artwork => (
-                                <Grid item xs={12} sm={6} key={artwork.id}>
-                                    <Card style={{ height: '100%', display: 'flex', flexDirection: 'column' }}>
-                                        <Box style={{ position: 'relative', paddingTop: '70%', overflow: 'hidden', backgroundColor: '#F2F7F9' }}>
-                                            <img src={artwork.imageUrl} alt={artwork.title} style={{ position: 'absolute', top: 0, left: 0, width: '100%', height: '100%', objectFit: 'cover' }} />
-                                        </Box>
-                                        <CardContent style={{ flexGrow: 1, padding: '16px' }}>
-                                            <Typography variant="h6" style={{ fontWeight: 700, fontSize: '1.05rem', marginBottom: '4px' }}>{artwork.title}</Typography>
-                                            <Typography variant="caption" color="text.secondary" display="block" style={{ marginBottom: '12px', minHeight: '32px' }}>{artwork.description || "Tidak ada deskripsi."}</Typography>
-                                            <Box display="flex" justifyContent="space-between" alignItems="center" pt={1} borderTop="1px solid rgba(74, 159, 191, 0.08)">
-                                                <Typography variant="body2" style={{ fontWeight: 700, color: '#4A9FBF' }}>Rp {artwork.price ? Number(artwork.price).toLocaleString('id-ID') : '0'}</Typography>
-                                                <Box display="flex" gap={1.5}>
-                                                    <Typography variant="caption" color="text.secondary">❤️ {artwork.likesCount || 0}</Typography>
-                                                    <Typography variant="caption" color="text.secondary">👁️ {artwork.viewsCount || 0}</Typography>
-                                                </Box>
-                                            </Box>
-                                        </CardContent>
-                                    </Card>
-                                </Grid>
-                            ))}
-                        </Grid>
-                    ) : (
-                        <Box p={4} textAlign="center" bgcolor="#FFFFFF" borderRadius="24px" border="1px solid rgba(74, 159, 191, 0.12)">
-                            <Typography variant="body2" color="text.secondary">Kreator belum mengunggah contoh pameran karya seni.</Typography>
-                        </Box>
-                    )}
-                </Grid>
+            <Typography variant="h4" fontWeight={800} sx={{ mt: 1, mb: 2, color: '#1A6B8A' }}>
+              {commission.title}
+            </Typography>
+
+            <Typography variant="body2" color="text.secondary" sx={{ mb: 3, lineHeight: 1.6 }}>
+              {commission.description || 'Professional custom artwork tailored to your needs.'}
+            </Typography>
+
+            {/* Price */}
+            <Typography variant="body2" sx={{ color: '#64748B' }}>Starting from</Typography>
+            <Typography variant="h3" fontWeight={800} sx={{ color: '#4A9FBF', mb: 3 }}>
+              Rp {commission.priceFrom.toLocaleString('id-ID')}
+            </Typography>
+
+            {/* Details Grid */}
+            <Grid container spacing={2} sx={{ mb: 3 }}>
+              <Grid item xs={4}>
+                <Typography variant="caption" sx={{ color: '#94A3B8' }}>Turnaround</Typography>
+                <Typography variant="body2" fontWeight={600}>{commission.turnaround}</Typography>
+              </Grid>
+              <Grid item xs={4}>
+                <Typography variant="caption" sx={{ color: '#94A3B8' }}>Revisions</Typography>
+                <Typography variant="body2" fontWeight={600}>{commission.revisions} times</Typography>
+              </Grid>
+              <Grid item xs={4}>
+                <Typography variant="caption" sx={{ color: '#94A3B8' }}>Slots Left</Typography>
+                <Typography variant="body2" fontWeight={600}>{commission.slotsLeft || commission.slots}</Typography>
+              </Grid>
             </Grid>
 
-            <Dialog open={openModal} onClose={handleCloseModal} maxWidth="sm" fullWidth>
-                <DialogTitle style={{ fontWeight: 'bold', color: '#1A6B8A' }}>Formulir Permintaan Komisi</DialogTitle>
-                <DialogContent>
-                    <Typography variant="body2" color="text.secondary" mb={2}>Isi detail permintaan komisi seni Anda untuk {artist.artistName}.</Typography>
-                    <TextField fullWidth label="Judul Permintaan (Misal: Avatar 2D Headshot)" variant="outlined" margin="normal" value={commissionData.title} onChange={(e) => setCommissionData({...commissionData, title: e.target.value})} />
-                    <TextField fullWidth select label="Kategori" variant="outlined" margin="normal" value={commissionData.category} onChange={(e) => setCommissionData({...commissionData, category: e.target.value})}>
-                        {["Illustrations", "2D Avatars", "3D Models", "Emotes + Badges"].map((cat) => (
-                            <MenuItem key={cat} value={cat}>{cat}</MenuItem>
-                        ))}
-                    </TextField>
-                    <TextField fullWidth label="Tawaran Harga (Rp)" variant="outlined" margin="normal" type="number" value={commissionData.price} onChange={(e) => setCommissionData({...commissionData, price: e.target.value})} />
-                    <TextField fullWidth label="Deskripsi Detail" variant="outlined" margin="normal" multiline rows={4} placeholder="Jelaskan pose, warna, atau referensi secara detail..." value={commissionData.description} onChange={(e) => setCommissionData({...commissionData, description: e.target.value})} />
-                </DialogContent>
-                <DialogActions style={{ padding: '16px 24px' }}>
-                    <Button onClick={handleCloseModal} color="error" variant="outlined">Batal</Button>
-                    <Button onClick={handleCommissionSubmit} color="primary" variant="contained" style={{ color: '#FFFFFF' }}>Kirim Permintaan</Button>
-                </DialogActions>
-            </Dialog>
-        </Container>
-    );
+            {/* Tags */}
+            {commission.includes && commission.includes.length > 0 && (
+              <Box sx={{ mb: 3 }}>
+                <Typography variant="caption" sx={{ color: '#94A3B8', display: 'block', mb: 1 }}>Tags</Typography>
+                <Stack direction="row" spacing={1} flexWrap="wrap" gap={1}>
+                  {commission.includes.map((tag, idx) => (
+                    <Chip key={idx} label={tag} size="small" variant="outlined" />
+                  ))}
+                </Stack>
+              </Box>
+            )}
+
+            {/* Artist Info */}
+            <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', p: 2, bgcolor: '#F8FAFC', borderRadius: '16px', mb: 3 }}>
+              <Stack direction="row" alignItems="center" spacing={2}>
+                <Avatar src={artist.profilePicture} sx={{ width: 56, height: 56 }}>
+                  {artist.artistName?.charAt(0)}
+                </Avatar>
+                <Box>
+                  <Stack direction="row" alignItems="center" spacing={1}>
+                    <Typography variant="subtitle1" fontWeight={700}>{artist.artistName}</Typography>
+                    <VerifiedIcon sx={{ color: '#4A9FBF', fontSize: 16 }} />
+                  </Stack>
+                  <Typography variant="caption" sx={{ color: '#64748B' }}>Verified Artist</Typography>
+                  <Stack direction="row" alignItems="center" spacing={0.5}>
+                    <Rating value={artist.rating} size="small" readOnly />
+                    <Typography variant="caption" sx={{ color: '#94A3B8' }}>({artist.totalReviews} reviews)</Typography>
+                  </Stack>
+                </Box>
+              </Stack>
+            </Box>
+
+            {/* Action Buttons */}
+            <Stack direction="row" spacing={2}>
+              <Button
+                variant="contained"
+                fullWidth
+                startIcon={<ShoppingCartIcon />}
+                onClick={handleOpenRequest}
+                sx={{ bgcolor: '#4A9FBF', borderRadius: '40px', py: 1.5, textTransform: 'none', fontWeight: 700 }}
+              >
+                Request Commission
+              </Button>
+              <Button
+                variant="outlined"
+                startIcon={<ChatIcon />}
+                onClick={() => setOpenChat(true)}
+                sx={{ borderRadius: '40px', px: 3, textTransform: 'none' }}
+              >
+                Chat
+              </Button>
+            </Stack>
+          </Card>
+        </Grid>
+      </Grid>
+
+      {/* ==================== REQUEST COMMISSION MODAL ==================== */}
+      <Dialog open={openRequest} onClose={() => !submitting && setOpenRequest(false)} maxWidth="md" fullWidth>
+        <DialogTitle sx={{ bgcolor: '#4A9FBF', color: 'white' }}>
+          <Stack direction="row" justifyContent="space-between" alignItems="center">
+            <Typography fontWeight={700}>Commission Request</Typography>
+            <IconButton onClick={() => setOpenRequest(false)} sx={{ color: 'white' }} disabled={submitting}>
+              <CloseIcon />
+            </IconButton>
+          </Stack>
+        </DialogTitle>
+
+        <DialogContent sx={{ py: 3 }}>
+          {requestStep === 1 && (
+            <Box>
+              <Box sx={{ mb: 4 }}>
+                <Typography variant="h6" fontWeight={700} sx={{ color: '#1A6B8A', mb: 1 }}>
+                  Requesting as @{currentUser?.username || 'User'}
+                </Typography>
+                <Typography variant="body2" color="text.secondary">
+                  Once you submit your request, the artist will review it and send you a proposal.
+                </Typography>
+              </Box>
+
+              <Typography variant="subtitle1" fontWeight={700} sx={{ mb: 2, color: '#1A6B8A' }}>
+                Your Contact Details
+              </Typography>
+
+              <TextField
+                fullWidth
+                label="Email *"
+                type="email"
+                value={requestData.email}
+                onChange={(e) => setRequestData({...requestData, email: e.target.value})}
+                margin="normal"
+                helperText="Email is NOT shared with anyone. Only used for request updates."
+              />
+
+              <Typography variant="subtitle2" fontWeight={600} sx={{ mt: 2, mb: 1, color: '#64748B' }}>
+                Social Media (Optional)
+              </Typography>
+
+              <Grid container spacing={2}>
+                <Grid item xs={6}>
+                  <TextField fullWidth label="Twitter" placeholder="username" value={requestData.twitter} onChange={(e) => setRequestData({...requestData, twitter: e.target.value})} />
+                </Grid>
+                <Grid item xs={6}>
+                  <TextField fullWidth label="Instagram" placeholder="username" value={requestData.instagram} onChange={(e) => setRequestData({...requestData, instagram: e.target.value})} />
+                </Grid>
+                <Grid item xs={6}>
+                  <TextField fullWidth label="Twitch" placeholder="username" value={requestData.twitch} onChange={(e) => setRequestData({...requestData, twitch: e.target.value})} />
+                </Grid>
+                <Grid item xs={6}>
+                  <TextField fullWidth label="YouTube" placeholder="username" value={requestData.youtube} onChange={(e) => setRequestData({...requestData, youtube: e.target.value})} />
+                </Grid>
+              </Grid>
+
+              <Typography variant="subtitle1" fontWeight={700} sx={{ mt: 3, mb: 2, color: '#1A6B8A' }}>
+                How will you be using this commission?
+              </Typography>
+
+              <TextField
+                select
+                fullWidth
+                label="Usage Type *"
+                value={requestData.usage}
+                onChange={(e) => setRequestData({...requestData, usage: e.target.value})}
+                margin="normal"
+              >
+                <MenuItem value="personal">Personal Use Only</MenuItem>
+                <MenuItem value="commercial">Commercial Use (Streaming/Social Media)</MenuItem>
+                <MenuItem value="merch">Commercial Merchandising</MenuItem>
+              </TextField>
+
+              <Typography variant="subtitle1" fontWeight={700} sx={{ mt: 3, mb: 2, color: '#1A6B8A' }}>
+                References and Files
+              </Typography>
+
+              <TextField
+                fullWidth
+                label="Character reference sheets, mood boards, sample poses"
+                multiline
+                rows={3}
+                value={requestData.references}
+                onChange={(e) => setRequestData({...requestData, references: e.target.value})}
+                margin="normal"
+                placeholder="Describe your character, provide references, or share any specific requirements..."
+              />
+
+              <Box sx={{ mt: 2 }}>
+                <Button variant="outlined" component="label" startIcon={<UploadFileIcon />} sx={{ borderRadius: '40px', textTransform: 'none' }}>
+                  Upload File
+                  <input type="file" hidden multiple onChange={handleFileUpload} />
+                </Button>
+                {uploadedFiles.length > 0 && (
+                  <Box sx={{ mt: 2 }}>
+                    {uploadedFiles.map((file) => (
+                      <Chip key={file.id} label={file.name} onDelete={() => removeFile(file.id)} sx={{ m: 0.5 }} />
+                    ))}
+                  </Box>
+                )}
+              </Box>
+
+              <Box sx={{ mt: 2, display: 'flex', gap: 1 }}>
+                <TextField size="small" fullWidth placeholder="Add link (Google Drive, Dropbox, etc.)" value={newLink} onChange={(e) => setNewLink(e.target.value)} />
+                <Button variant="outlined" onClick={addLink} startIcon={<AddLinkIcon />}>Add</Button>
+              </Box>
+
+              {uploadedLinks.length > 0 && (
+                <Box sx={{ mt: 2 }}>
+                  {uploadedLinks.map((link) => (
+                    <Chip key={link.id} label={link.url} onDelete={() => removeLink(link.id)} sx={{ m: 0.5, maxWidth: '100%' }} />
+                  ))}
+                </Box>
+              )}
+
+              <Typography variant="subtitle1" fontWeight={700} sx={{ mt: 3, mb: 2, color: '#1A6B8A' }}>
+                May I publicly stream / share the work with credit?
+              </Typography>
+
+              <TextField select fullWidth value={requestData.canStream} onChange={(e) => setRequestData({...requestData, canStream: e.target.value})} margin="normal">
+                <MenuItem value="yes">Yes, with credit</MenuItem>
+                <MenuItem value="no">No, private only</MenuItem>
+                <MenuItem value="ask">Ask me first</MenuItem>
+              </TextField>
+
+              <Typography variant="subtitle1" fontWeight={700} sx={{ mt: 3, mb: 2, color: '#1A6B8A' }}>
+                Do you have a deadline for this project?
+              </Typography>
+
+              <TextField fullWidth type="date" value={requestData.deadline} onChange={(e) => setRequestData({...requestData, deadline: e.target.value})} margin="normal" InputLabelProps={{ shrink: true }} />
+
+              <Typography variant="subtitle1" fontWeight={700} sx={{ mt: 3, mb: 2, color: '#1A6B8A' }}>
+                How would you like to proceed with the payment?
+              </Typography>
+
+              <TextField select fullWidth value={requestData.paymentMethod} onChange={(e) => setRequestData({...requestData, paymentMethod: e.target.value})} margin="normal">
+                <MenuItem value="full">Pay in full</MenuItem>
+                <MenuItem value="half">50% upfront, 50% on completion</MenuItem>
+              </TextField>
+
+              <Typography variant="subtitle1" fontWeight={700} sx={{ mt: 3, mb: 2, color: '#1A6B8A' }}>
+                Extra Info
+              </Typography>
+
+              <TextField fullWidth multiline rows={3} placeholder="Pose, traits, multiple characters, add-ons, etc." value={requestData.extraInfo} onChange={(e) => setRequestData({...requestData, extraInfo: e.target.value})} />
+
+              <Box sx={{ mt: 4, p: 2, bgcolor: '#F8FAFC', borderRadius: '16px' }}>
+                <Typography variant="body2" color="text.secondary">Base price (from service)</Typography>
+                <Typography variant="h4" fontWeight={800} sx={{ color: '#1A6B8A' }}>
+                  Rp {commission.priceFrom.toLocaleString('id-ID')}
+                </Typography>
+                <Typography variant="caption" color="text.secondary">Note that this is an auto-generated estimate. The artist may quote a different price after review.</Typography>
+              </Box>
+
+              <FormControlLabel
+                control={<Checkbox checked={requestData.agreeTerms} onChange={(e) => setRequestData({...requestData, agreeTerms: e.target.checked})} />}
+                label="I agree to the Terms of Service and Privacy Policy"
+                sx={{ mt: 3 }}
+              />
+            </Box>
+          )}
+
+          {requestStep === 2 && (
+            <Box textAlign="center" py={4}>
+              <CircularProgress sx={{ color: '#4A9FBF', mb: 2 }} />
+              <Typography>Submitting your request...</Typography>
+            </Box>
+          )}
+
+          {requestStep === 3 && (
+            <Box textAlign="center" py={4}>
+              <Box sx={{ fontSize: 64, mb: 2 }}>✅</Box>
+              <Typography variant="h5" fontWeight={800} sx={{ color: '#10B981', mb: 2 }}>Request Submitted!</Typography>
+              <Typography variant="body2" color="text.secondary">Your commission request has been sent to {artist.artistName}. They will review it and get back to you soon.</Typography>
+            </Box>
+          )}
+        </DialogContent>
+
+        {requestStep === 1 && (
+          <DialogActions sx={{ p: 3 }}>
+            <Button onClick={() => setOpenRequest(false)} variant="outlined" color="error">Cancel</Button>
+            <Button onClick={handleSubmitRequest} variant="contained" disabled={!requestData.email || !requestData.agreeTerms} sx={{ bgcolor: '#4A9FBF' }}>Submit Request</Button>
+          </DialogActions>
+        )}
+      </Dialog>
+
+      {/* CHAT MODAL */}
+      <Dialog open={openChat} onClose={() => setOpenChat(false)} maxWidth="sm" fullWidth>
+        <DialogTitle sx={{ bgcolor: '#4A9FBF', color: 'white' }}>
+          <Stack direction="row" justifyContent="space-between" alignItems="center">
+            <Typography fontWeight={700}>Chat with {artist.artistName}</Typography>
+            <IconButton onClick={() => setOpenChat(false)} sx={{ color: 'white' }}><CloseIcon /></IconButton>
+          </Stack>
+        </DialogTitle>
+        <DialogContent sx={{ p: 0, height: 450, display: 'flex', flexDirection: 'column' }}>
+          <Box sx={{ flex: 1, overflowY: 'auto', p: 2, bgcolor: '#F8FAFC' }}>
+            {chatHistory.length === 0 ? (
+              <Box textAlign="center" py={8}>
+                <ChatIcon sx={{ fontSize: 48, color: '#94A3B8', mb: 2 }} />
+                <Typography variant="body2" color="text.secondary">This is the beginning of your direct message history with {artist.artistName}.</Typography>
+                <Typography variant="caption" color="text.secondary">Go ahead and say hi!</Typography>
+              </Box>
+            ) : (
+              chatHistory.map((msg) => (
+                <Box key={msg.id} sx={{ mb: 2, display: 'flex', justifyContent: msg.senderId === currentUser?.id ? 'flex-end' : 'flex-start' }}>
+                  <Box sx={{ maxWidth: '75%', bgcolor: msg.senderId === currentUser?.id ? '#4A9FBF' : 'white', p: 1.5, borderRadius: '16px' }}>
+                    <Typography variant="caption" sx={{ display: 'block', color: msg.senderId === currentUser?.id ? '#E0F2FE' : '#94A3B8' }}>{msg.senderName}</Typography>
+                    <Typography variant="body2" sx={{ color: msg.senderId === currentUser?.id ? 'white' : '#1C2833' }}>{msg.text}</Typography>
+                    <Typography variant="caption" sx={{ display: 'block', mt: 0.5, color: msg.senderId === currentUser?.id ? '#E0F2FE' : '#94A3B8' }}>{new Date(msg.timestamp).toLocaleTimeString()}</Typography>
+                  </Box>
+                </Box>
+              ))
+            )}
+            <div ref={messagesEndRef} />
+          </Box>
+          <Divider />
+          <Box sx={{ p: 2, display: 'flex', gap: 1, bgcolor: 'white' }}>
+            <TextField size="small" fullWidth placeholder={`Message ${artist.artistName}...`} value={chatMessage} onChange={(e) => setChatMessage(e.target.value)} onKeyPress={(e) => e.key === 'Enter' && handleSendMessage()} />
+            <Button variant="contained" onClick={handleSendMessage} sx={{ bgcolor: '#4A9FBF', borderRadius: '40px' }}>Send</Button>
+          </Box>
+        </DialogContent>
+      </Dialog>
+
+      {/* Snackbar */}
+      <Snackbar open={snackbar.open} autoHideDuration={4000} onClose={() => setSnackbar({ ...snackbar, open: false })} anchorOrigin={{ vertical: 'bottom', horizontal: 'center' }}>
+        <Alert severity={snackbar.severity} sx={{ borderRadius: '12px' }}>{snackbar.message}</Alert>
+      </Snackbar>
+    </Container>
+  );
 }
 
 export default ArtistDetail;

@@ -1,95 +1,31 @@
-import React, { useState } from 'react';
+// HomePage.js - Unified Feed with Filters
+import React, { useState, useEffect } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import {
-  Box,
-  Container,
-  Typography,
-  Button,
-  Grid,
-  Card,
-  CardContent,
-  Avatar,
-  Stack,
-  Chip,
-  Modal,
-  IconButton,
-  Divider
+  Box, Container, Typography, Button, Grid, Card, CardContent,
+  Avatar, Stack, Chip, Modal, IconButton, Skeleton, ToggleButton, ToggleButtonGroup
 } from '@mui/material';
-import { motion } from 'framer-motion';
+import { motion, AnimatePresence } from 'framer-motion';
 import ArrowForwardIcon from '@mui/icons-material/ArrowForward';
 import StarIcon from '@mui/icons-material/Star';
 import VerifiedIcon from '@mui/icons-material/Verified';
 import CloseIcon from '@mui/icons-material/Close';
 import BookmarkBorderIcon from '@mui/icons-material/BookmarkBorder';
 import CheckIcon from '@mui/icons-material/Check';
+import ChatIcon from '@mui/icons-material/Chat';
+import WhatshotIcon from '@mui/icons-material/Whatshot';
+import ShuffleIcon from '@mui/icons-material/Shuffle';
+import AccessTimeIcon from '@mui/icons-material/AccessTime';
 
 import {
-  Palette,
-  Layers,
-  Create,
-  AutoAwesome,
-  VideoCameraBack,
-  ContentPaste,
-  InfoOutlined as InfoIcon,
-  ChatBubbleOutlineOutlined as ChatBubbleOutlineIcon
+  Palette, Layers, Create, AutoAwesome,
+  VideoCameraBack, ContentPaste
 } from '@mui/icons-material';
 
-const featuredCommissions = [
-  {
-    id: 1,
-    title: 'Tempura Mermaid Chibi YCH Live2D model Vtuber Food',
-    artistName: 'Starlight',
-    category: '2D Avatars',
-    price: 'IDR 693.802',
-    rating: 5.0,
-    reviews: 56,
-    emoji: '🌸',
-    avatar: 'https://i.pravatar.cc/150?img=47',
-    images: ['https://images.unsplash.com/photo-1618005182384-a83a8bd57fbe?w=600'],
-    licenses: ['Personal Use Only', 'Monetized Content Allowed', 'Commercial Merchandising']
-  },
-  {
-    id: 2,
-    title: '"Watercolor" Portrait Custom Illustration Fantasy Style',
-    artistName: 'Piaww',
-    category: 'Illustrations',
-    price: 'IDR 350.000',
-    rating: 4.9,
-    reviews: 140,
-    emoji: '🎨',
-    avatar: 'https://i.pravatar.cc/150?img=32',
-    images: ['https://images.unsplash.com/photo-1579783902614-a3fb3927b6a5?w=600'],
-    licenses: ['Personal Use Only', 'Monetized Content Allowed']
-  },
-  {
-    id: 3,
-    title: 'Lo-fi Chill Beats & Background Music Asset for Streams',
-    artistName: 'BubuRjagung',
-    category: 'Music & Audio',
-    price: 'IDR 500.000',
-    rating: 4.8,
-    reviews: 210,
-    emoji: '🎵',
-    avatar: 'https://i.pravatar.cc/150?img=12',
-    images: ['https://images.unsplash.com/photo-1511671782779-c97d3d27a1d4?w=600'],
-    licenses: ['Personal Use Only', 'Monetized Content Allowed']
-  },
-  {
-    id: 4,
-    title: 'Custom Stream Overlays, Badges & Twitch Emotes Pack',
-    artistName: 'IkanAsin',
-    category: 'Emotes + Badges',
-    price: 'IDR 150.000',
-    rating: 5.0,
-    reviews: 320,
-    emoji: '🐱',
-    avatar: 'https://i.pravatar.cc/150?img=26',
-    images: ['https://images.unsplash.com/photo-1620641788421-7a1c342ea42e?w=600'],
-    licenses: ['Personal Use Only']
-  }
-];
-
-const vgenServices = [
+// ==========================================
+// SERVICE CATEGORIES DATA
+// ==========================================
+const serviceCategories = [
   { title: 'Illustrations', gradient: 'linear-gradient(135deg, #E3F2FD 0%, #BBDEFB 100%)', color: '#1E88E5', icon: <Palette /> },
   { title: '2D Avatars', gradient: 'linear-gradient(135deg, #EDE7F6 0%, #D1C4E9 100%)', color: '#5E35B1', icon: <Layers /> },
   { title: '3D Models', gradient: 'linear-gradient(135deg, #E0F2F1 0%, #B2DFDB 100%)', color: '#00897B', icon: <AutoAwesome /> },
@@ -99,71 +35,188 @@ const vgenServices = [
   { title: 'Animation + Videos', gradient: 'linear-gradient(135deg, #FCE4EC 0%, #F8BBD0 100%)', color: '#D81B60', icon: <VideoCameraBack /> },
 ];
 
+// ==========================================
+// GET DATA FROM STORAGE
+// ==========================================
+const getArtistCommissions = () => {
+  const saved = localStorage.getItem('creartsi_artist_commissions');
+  return saved ? JSON.parse(saved) : [];
+};
+
+const getArtistPortfolio = () => {
+  const saved = localStorage.getItem('creartsi_artist_portfolio');
+  return saved ? JSON.parse(saved) : [];
+};
+
+// ==========================================
+// HERO SECTION - Image on RIGHT
+// ==========================================
 const HeroSection = () => (
-  <Box sx={{ minHeight: '70vh', background: 'linear-gradient(135deg, #E8F4F8 0%, #C9E6F0 60%, #FFF9E6 100%)', display: 'flex', alignItems: 'center', position: 'relative', overflow: 'hidden' }}>
-    <Container maxWidth="xl" sx={{ py: { xs: 6, md: 4 }, zIndex: 2 }}>
-      <Grid container spacing={6} alignItems="center">
-        <Grid item xs={12} md={7}>
-          <motion.div initial={{ opacity: 0, y: 30 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.8 }}>
+  <Box sx={{
+    minHeight: '80vh',
+    background: 'linear-gradient(135deg, #E8F4F8 0%, #C9E6F0 60%, #FFF9E6 100%)',
+    display: 'flex',
+    alignItems: 'center',
+    position: 'relative',
+    overflow: 'hidden'
+  }}>
+    <Container maxWidth="xl" sx={{ py: { xs: 6, md: 4 } }}>
+      <Grid container spacing={6} alignItems="center" direction={{ xs: 'column-reverse', md: 'row' }}>
+        <Grid item xs={12} md={6}>
+          <motion.div initial={{ opacity: 0, x: -30 }} animate={{ opacity: 1, x: 0 }} transition={{ duration: 0.8 }}>
             <Chip
-              label="For the love of human creativity 🇮🇩"
-              sx={{ bgcolor: '#FFFFFF', color: '#1A6B8A', fontWeight: 700, border: '1px solid rgba(26,107,138,0.2)', mb: 3, px: 1, boxShadow: '0 4px 12px rgba(0,0,0,0.03)' }}
+              label=" Indonesia's Creator Commission Platform "
+              sx={{
+                bgcolor: '#FFFFFF',
+                color: '#1A6B8A',
+                fontWeight: 700,
+                border: '1px solid rgba(26,107,138,0.2)',
+                mb: 4,
+                px: 2.5,
+                py: 2,
+                borderRadius: '30px',
+                fontSize: '0.85rem'
+              }}
             />
-            <Typography variant="h1" sx={{ fontSize: { xs: '2.5rem', md: '3.8rem' }, fontWeight: 950, color: '#1A6B8A', mb: 2, lineHeight: 1.15 }}>
-              Made for <span style={{ color: '#4A9FBF' }}>Indonesian Creators</span><br />
-              <span style={{ fontSize: '1.8rem', fontWeight: 600, color: '#5D6D7E' }}>di CreartsI dengan cinta ❤️</span>
+            <Typography variant="h1" sx={{
+              fontSize: { xs: '2.5rem', md: '4rem' },
+              fontWeight: 800,
+              color: '#1A6B8A',
+              mb: 3,
+              lineHeight: 1.2
+            }}>
+              Made for <span style={{ color: '#4A9FBF' }}>Indonesian Creators</span>
             </Typography>
-            <Typography variant="body1" sx={{ color: '#5D6D7E', mb: 4, fontWeight: 500, maxWidth: '600px', fontSize: '1.1rem', lineHeight: 1.6 }}>
-              Rumah komisi terbaik untuk VTubing, streaming, ilustrasi, musik, game, dan petualangan konten kreator asli Indonesia!
+            <Typography variant="body1" sx={{
+              color: '#5D6D7E',
+              mb: 5,
+              maxWidth: '550px',
+              fontSize: '1.1rem',
+              lineHeight: 1.7
+            }}>
+              Commission platform for illustrations, avatars, 3D models, and all your creative needs.
+              Connect directly with talented Indonesian artists.
             </Typography>
-            <Stack direction={{ xs: 'column', sm: 'row' }} spacing={2}>
-              <Button component={Link} to="/artists" variant="contained" size="large" sx={{ bgcolor: '#4A9FBF', color: 'white', '&:hover': { bgcolor: '#1A6B8A' }, borderRadius: '16px', px: 4, py: 1.8, fontWeight: 700, fontSize: '1rem' }}>
-                🎨 Jelajahi Seniman <ArrowForwardIcon sx={{ ml: 1 }} />
+            <Stack direction={{ xs: 'column', sm: 'row' }} spacing={3}>
+              <Button
+                component={Link}
+                to="/artists"
+                variant="contained"
+                size="large"
+                sx={{
+                  bgcolor: '#4A9FBF',
+                  color: 'white',
+                  '&:hover': { bgcolor: '#1A6B8A' },
+                  borderRadius: '50px',
+                  px: 5,
+                  py: 1.8,
+                  fontWeight: 700,
+                  fontSize: '1rem'
+                }}
+              >
+                🎨 Explore Artists
               </Button>
-              <Button component={Link} to="/register" variant="outlined" size="large" sx={{ borderColor: '#4A9FBF', color: '#4A9FBF', '&:hover': { bgcolor: 'rgba(74,159,191,0.05)', borderColor: '#1A6B8A' }, borderRadius: '16px', px: 4, fontWeight: 700 }}>
-                 Jadi Kreator
+              <Button
+                component={Link}
+                to="/register"
+                variant="outlined"
+                size="large"
+                sx={{
+                  borderColor: '#4A9FBF',
+                  color: '#4A9FBF',
+                  borderRadius: '50px',
+                  px: 5,
+                  py: 1.8,
+                  fontWeight: 700,
+                  fontSize: '1rem',
+                  '&:hover': { bgcolor: 'rgba(74,159,191,0.05)', borderColor: '#1A6B8A' }
+                }}
+              >
+                Join as Artist
               </Button>
             </Stack>
           </motion.div>
         </Grid>
-        <Grid item xs={12} md={5}>
-          <Box
-            component="img"
-            src="https://images.unsplash.com/photo-1518834107812-67b0b7c58434?w=600"
-            sx={{ width: '100%', height: '420px', objectFit: 'cover', borderRadius: '32px', border: '6px solid #FFFFFF', boxShadow: '0 20px 45px rgba(74,159,191,0.12)' }}
-          />
+        <Grid item xs={12} md={6}>
+          <motion.div initial={{ opacity: 0, x: 30 }} animate={{ opacity: 1, x: 0 }} transition={{ duration: 0.8 }}>
+            <Box
+              component="img"
+              src="https://images.unsplash.com/photo-1518834107812-67b0b7c58434?w=600"
+              sx={{
+                width: '100%',
+                height: '450px',
+                objectFit: 'cover',
+                borderRadius: '28px',
+                border: '6px solid #FFFFFF',
+                boxShadow: '0 25px 45px rgba(0,0,0,0.1)',
+                display: 'block',
+                marginLeft: 'auto'
+              }}
+            />
+          </motion.div>
         </Grid>
       </Grid>
     </Container>
   </Box>
 );
 
-const CommissionServices = () => {
+// ==========================================
+// SERVICE CATEGORIES SECTION
+// ==========================================
+const ServiceCategories = () => {
   const navigate = useNavigate();
 
   const handleCategoryClick = (title) => {
-    localStorage.setItem('showNavbarCategories', 'true');
-    window.dispatchEvent(new Event('categoryClicked'));
-    const pathName = title.toLowerCase().replace(/ \+ /g, '-').replace(/ /g, '-');
-    navigate(`/category/${pathName}`);
+    const pathMap = {
+      'Illustrations': 'illustrations',
+      '2D Avatars': '2d-avatars',
+      '3D Models': '3d-models',
+      'Emotes + Badges': 'emotes-badges',
+      'Stream Assets': 'stream-assets',
+      'Branding + Graphics': 'branding-graphics',
+      'Animation + Videos': 'animation-videos'
+    };
+    const path = pathMap[title] || title.toLowerCase().replace(/ /g, '-').replace(/\+/g, '');
+    navigate(`/category/${path}`);
   };
 
   return (
-    <Container maxWidth="xl" sx={{ py: 4 }}>
-      <Typography variant="h5" fontWeight={850} sx={{ mb: 3, color: '#1A6B8A' }}>
-        Commission Human Artists <span style={{ color: '#4A9FBF' }}>CreartsI+</span>
+    <Container maxWidth="xl" sx={{ py: 6 }}>
+      <Typography variant="h4" fontWeight={800} sx={{ mb: 5, color: '#1A6B8A', textAlign: 'center' }}>
+        Commission Services
       </Typography>
-      <Grid container spacing={2}>
-        {vgenServices.map((service, idx) => (
+      <Grid container spacing={3}>
+        {serviceCategories.map((service, idx) => (
           <Grid item xs={6} sm={4} md={3} key={idx}>
-            <motion.div
-              whileHover={{ y: -4 }}
-              transition={{ duration: 0.2 }}
-              onClick={() => handleCategoryClick(service.title)}
-            >
-              <Card sx={{ background: service.gradient, p: 3, height: '110px', position: 'relative', borderRadius: '20px', cursor: 'pointer', display: 'flex', alignItems: 'flex-end', border: 'none', boxShadow: '0 6px 15px rgba(0,0,0,0.02)' }}>
-                <Box sx={{ position: 'absolute', top: 16, right: 16, color: service.color, opacity: 0.7, '& svg': { fontSize: 30 } }}>{service.icon}</Box>
-                <Typography variant="subtitle1" fontWeight={800} sx={{ color: service.color, lineHeight: 1.2 }}>{service.title}</Typography>
+            <motion.div whileHover={{ y: -6 }} transition={{ duration: 0.2 }}>
+              <Card
+                onClick={() => handleCategoryClick(service.title)}
+                sx={{
+                  background: service.gradient,
+                  p: 3.5,
+                  height: '130px',
+                  borderRadius: '20px',
+                  cursor: 'pointer',
+                  display: 'flex',
+                  flexDirection: 'column',
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                  textAlign: 'center',
+                  transition: 'all 0.3s ease',
+                  border: 'none',
+                  boxShadow: '0 4px 12px rgba(0,0,0,0.05)',
+                  '&:hover': {
+                    transform: 'translateY(-6px)',
+                    boxShadow: '0 12px 24px rgba(74, 159, 191, 0.15)'
+                  }
+                }}
+              >
+                <Box sx={{ color: service.color, fontSize: 42, mb: 1.5 }}>
+                  {service.icon}
+                </Box>
+                <Typography variant="subtitle1" fontWeight={700} sx={{ color: service.color }}>
+                  {service.title}
+                </Typography>
               </Card>
             </motion.div>
           </Grid>
@@ -173,216 +226,499 @@ const CommissionServices = () => {
   );
 };
 
-const NoAISection = () => (
-  <Container maxWidth="xl" sx={{ my: 4 }}>
-    <Box sx={{ background: 'linear-gradient(135deg, #FFF9E6 0%, #FFF3E0 100%)', py: 4, px: 4, borderRadius: '24px', textAlign: 'center', border: '1px solid #FFE0B2' }}>
-      <Typography variant="h5" fontWeight={800} color="#E65100" gutterBottom>No Generative AI Allowed 🚫</Typography>
-      <Typography variant="body2" sx={{ maxW: '650px', mx: 'auto', color: '#6D4C41', fontWeight: 500, lineHeight: 1.6 }}>
-        Kami berkomitmen penuh mendukung 100% karya otentik buatan tangan dari Seniman Nyata Indonesia.
+// ==========================================
+// PLATFORM COMMITMENT SECTION
+// ==========================================
+const PlatformCommitment = () => (
+  <Container maxWidth="xl" sx={{ my: 6 }}>
+    <Box sx={{
+      bgcolor: '#F8FAFC',
+      py: 6,
+      px: 5,
+      borderRadius: '28px',
+      textAlign: 'center',
+      border: '1px solid #E2E8F0'
+    }}>
+      <Typography variant="h5" fontWeight={800} sx={{ color: '#1A6B8A', mb: 2 }}>
+        NO AI 🚫
+      </Typography>
+      <Typography variant="body1" sx={{ maxWidth: '650px', mx: 'auto', color: '#475569', lineHeight: 1.7 }}>
+        100% artwork made by Indonesian artists. We do not allow AI-generated content
+        to ensure every piece is a result of genuine human creativity.
       </Typography>
     </Box>
   </Container>
 );
 
 // ==========================================
-// 3. MAIN HOMEPAGE COMPONENT
+// MAIN HOMEPAGE COMPONENT - UNIFIED FEED
 // ==========================================
 function HomePage() {
-  const [selectedService, setSelectedService] = useState(null);
+  const [feedItems, setFeedItems] = useState([]);
+  const [filter, setFilter] = useState('latest');
+  const [loading, setLoading] = useState(true);
+  const [selectedItem, setSelectedItem] = useState(null);
 
-  const handleOpenModal = (service) => setSelectedService(service);
-  const handleCloseModal = () => setSelectedService(null);
+  useEffect(() => {
+    const loadFeed = () => {
+      setLoading(true);
+
+      // Get commissions and portfolio
+      const commissions = getArtistCommissions().filter(comm => comm.isOpen === true);
+      const portfolio = getArtistPortfolio();
+
+      // Format commissions as feed items
+      const commissionItems = commissions.map(comm => ({
+        id: `comm-${comm.id}`,
+        type: 'commission',
+        title: comm.title || 'Commission Package',
+        artistName: comm.artistName || 'Artist',
+        category: comm.category || 'General',
+        price: `Rp ${comm.priceFrom?.toLocaleString('id-ID') || '0'}`,
+        rating: 5.0,
+        reviews: 0,
+        avatar: 'https://i.pravatar.cc/150?img=1',
+        imageUrl: comm.coverImage || 'https://images.unsplash.com/photo-1618005182384-a83a8bd57fbe?w=600',
+        description: comm.description || '',
+        turnaround: comm.turnaround || '7-14 days',
+        revisions: comm.revisions || 2,
+        slots: comm.slots || 5,
+        tags: [comm.category],
+        createdAt: comm.createdAt || new Date().toISOString(),
+        likes: Math.floor(Math.random() * 100)
+      }));
+
+      // Format portfolio as feed items
+      const portfolioItems = portfolio.map(item => ({
+        id: `port-${item.id}`,
+        type: 'portfolio',
+        title: item.title,
+        artistName: item.artistName || 'Artist',
+        category: item.medium || 'Artwork',
+        price: null,
+        rating: null,
+        avatar: 'https://i.pravatar.cc/150?img=1',
+        imageUrl: item.imageUrl,
+        description: item.description || '',
+        tags: item.tags || [],
+        createdAt: item.createdAt || new Date().toISOString(),
+        likes: Math.floor(Math.random() * 200)
+      }));
+
+      // Combine and sort
+      let allItems = [...commissionItems, ...portfolioItems];
+
+      // Sort by date for latest
+      allItems.sort((a, b) => new Date(b.createdAt) - new Date(a.createdAt));
+
+      setFeedItems(allItems);
+      setLoading(false);
+    };
+
+    loadFeed();
+
+    const handleStorageChange = () => loadFeed();
+    window.addEventListener('storage', handleStorageChange);
+    return () => window.removeEventListener('storage', handleStorageChange);
+  }, []);
+
+  // Filter items based on selected filter
+  const getFilteredItems = () => {
+    let items = [...feedItems];
+
+    switch (filter) {
+      case 'latest':
+        items.sort((a, b) => new Date(b.createdAt) - new Date(a.createdAt));
+        break;
+      case 'trending':
+        items.sort((a, b) => (b.likes || 0) - (a.likes || 0));
+        break;
+      case 'random':
+        items = [...items].sort(() => Math.random() - 0.5);
+        break;
+      default:
+        break;
+    }
+
+    return items.slice(0, 12);
+  };
+
+  const filteredItems = getFilteredItems();
+
+  const handleFilterChange = (event, newFilter) => {
+    if (newFilter !== null) {
+      setFilter(newFilter);
+    }
+  };
+
+  const handleOpenModal = (item) => setSelectedItem(item);
+  const handleCloseModal = () => setSelectedItem(null);
+
+  if (loading) {
+    return (
+      <Box sx={{ bgcolor: '#F2F7F9', minHeight: '100vh' }}>
+        <HeroSection />
+        <ServiceCategories />
+        <Container maxWidth="xl" sx={{ py: 5 }}>
+          <Skeleton variant="rounded" width={200} height={40} sx={{ mx: 'auto', mb: 4 }} />
+          <Grid container spacing={3}>
+            {[1, 2, 3, 4, 5, 6, 7, 8].map((i) => (
+              <Grid item xs={12} sm={6} md={3} key={i}>
+                <Skeleton variant="rounded" width="100%" height={320} sx={{ borderRadius: '20px' }} />
+              </Grid>
+            ))}
+          </Grid>
+        </Container>
+      </Box>
+    );
+  }
 
   return (
     <Box sx={{ bgcolor: '#F2F7F9', minHeight: '100vh', pb: 8 }}>
       <HeroSection />
-      <CommissionServices />
+      <ServiceCategories />
 
-      {/* Grid Feed Utama */}
-      <Container maxWidth="xl" sx={{ py: 4 }}>
-        <Typography variant="h5" fontWeight={850} sx={{ mb: 4, color: '#1A6B8A' }}>
-          Explore Marketplace 🔥
-        </Typography>
+      {/* UNIFIED FEED SECTION */}
+      <Container maxWidth="xl" sx={{ py: 5 }}>
+        <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 5, flexWrap: 'wrap', gap: 2 }}>
+          <Typography variant="h4" fontWeight={800} sx={{ color: '#1A6B8A' }}>
+            Discover
+          </Typography>
 
-        <Grid container spacing={3}>
-          {featuredCommissions.map((item) => (
-            <Grid item xs={12} sm={6} md={3} key={item.id}>
-              <motion.div whileHover={{ y: -6 }} transition={{ duration: 0.2 }}>
-                <Card
-                  onClick={() => handleOpenModal(item)}
-                  sx={{
-                    bgcolor: '#FFFFFF',
-                    borderRadius: '24px',
-                    cursor: 'pointer',
-                    overflow: 'hidden',
-                    height: '100%',
-                    display: 'flex',
-                    flexDirection: 'column',
-                    transition: 'all 0.3s ease',
-                    '&:hover': { borderColor: '#4A9FBF', boxShadow: '0 12px 35px rgba(74, 159, 191, 0.08)' }
-                  }}
-                >
-                  <Box sx={{ position: 'relative', pt: '100%', overflow: 'hidden', bgcolor: '#E8F4F8' }}>
-                    <Box
-                      component="img"
-                      src={item.images[0]}
-                      alt={item.title}
-                      sx={{ width: '100%', height: '100%', objectFit: 'cover', position: 'absolute', top: 0, left: 0 }}
-                    />
-                    <Chip label="OPEN" size="small" sx={{ position: 'absolute', top: 14, left: 14, bgcolor: '#87D37C', color: 'white', fontWeight: 800, borderRadius: '8px' }} />
-                    <IconButton
-                      onClick={(e) => { e.stopPropagation(); }}
-                      sx={{ position: 'absolute', top: 10, right: 10, bgcolor: 'rgba(255,255,255,0.8)', color: '#1A6B8A', backdropFilter: 'blur(4px)', '&:hover': { bgcolor: '#FFFFFF' } }}
-                    >
-                      <BookmarkBorderIcon fontSize="small" />
-                    </IconButton>
-                  </Box>
-                  <CardContent sx={{ p: 2.5, flexGrow: 1, display: 'flex', flexDirection: 'column', justifyContent: 'space-between' }}>
-                    <Box>
-                      <Typography variant="body1" fontWeight={750} sx={{ color: '#1C2833', mb: 1.5, lineHeight: 1.4, height: '44px', overflow: 'hidden', display: '-webkit-box', WebkitLineClamp: 2, WebkitBoxOrient: 'vertical' }}>
-                        {item.title}
-                      </Typography>
-                      <Stack direction="row" alignItems="center" spacing={1} sx={{ mb: 2 }}>
-                        <Avatar src={item.avatar} sx={{ width: 24, height: 24 }} />
-                        <Typography variant="body2" sx={{ color: '#5D6D7E', fontWeight: 600 }}>{item.artistName}</Typography>
-                        <VerifiedIcon sx={{ color: '#4A9FBF', fontSize: 15 }} />
-                      </Stack>
-                    </Box>
-                    <Stack direction="row" justifyContent="space-between" alignItems="center" sx={{ pt: 1.5, borderTop: '1px solid rgba(74, 159, 191, 0.1)' }}>
-                      <Typography variant="body1" fontWeight={800} sx={{ color: '#1A6B8A' }}>{item.price}</Typography>
-                      <Stack direction="row" alignItems="center" spacing={0.5}>
-                        <StarIcon sx={{ color: '#FFB300', fontSize: 16 }} />
-                        <Typography variant="body2" fontWeight={700} sx={{ color: '#1C2833' }}>{item.rating}</Typography>
-                        <Typography variant="caption" sx={{ color: '#A6ACAF' }}>({item.reviews})</Typography>
-                      </Stack>
-                    </Stack>
-                  </CardContent>
-                </Card>
-              </motion.div>
-            </Grid>
-          ))}
-        </Grid>
-      </Container>
+          <ToggleButtonGroup
+            value={filter}
+            exclusive
+            onChange={handleFilterChange}
+            aria-label="feed filter"
+            sx={{
+              '& .MuiToggleButton-root': {
+                borderRadius: '40px !important',
+                px: 3,
+                py: 1,
+                textTransform: 'none',
+                fontWeight: 600,
+                border: '1px solid #E2E8F0',
+                color: '#64748B',
+                '&.Mui-selected': {
+                  bgcolor: '#4A9FBF',
+                  color: 'white',
+                  borderColor: '#4A9FBF',
+                  '&:hover': { bgcolor: '#1A6B8A' }
+                }
+              }
+            }}
+          >
+            <ToggleButton value="latest">
+              <AccessTimeIcon sx={{ mr: 1, fontSize: 18 }} /> Latest
+            </ToggleButton>
+            <ToggleButton value="trending">
+              <WhatshotIcon sx={{ mr: 1, fontSize: 18 }} /> Trending
+            </ToggleButton>
+            <ToggleButton value="random">
+              <ShuffleIcon sx={{ mr: 1, fontSize: 18 }} /> Random
+            </ToggleButton>
+          </ToggleButtonGroup>
+        </Box>
 
-      <NoAISection />
-
-      {/* Pop-up Modal Detail */}
-      <Modal
-        open={Boolean(selectedService)}
-        onClose={handleCloseModal}
-        sx={{ display: 'flex', alignItems: 'center', justifyContent: 'center', p: 2 }}
-      >
-        <Box sx={{ outline: 'none' }}>
-          {selectedService && (
-            <Box
+        {filteredItems.length === 0 ? (
+          <Box sx={{
+            textAlign: 'center',
+            py: 12,
+            bgcolor: '#FFFFFF',
+            borderRadius: '28px',
+            border: '1px solid #E2E8F0'
+          }}>
+            <Typography variant="h5" sx={{ color: '#4A9FBF', mb: 2, fontWeight: 700 }}>
+               No Content Yet
+            </Typography>
+            <Typography variant="body1" sx={{ color: '#64748B', mb: 4 }}>
+              No commissions or portfolio items available. Be the first to share!
+            </Typography>
+            <Button
+              component={Link}
+              to="/for-artists"
+              variant="contained"
               sx={{
-                position: 'relative',
-                width: '92vw',
-                maxWidth: '960px',
-                height: { xs: '90vh', md: '80vh' },
-                maxHeight: '680px',
-                bgcolor: '#FFFFFF',
-                borderRadius: '28px',
-                overflow: 'hidden',
-                display: 'flex',
-                flexDirection: { xs: 'column', md: 'row' },
-                border: '1px solid rgba(74, 159, 191, 0.15)',
-                boxShadow: '0 25px 60px rgba(0,0,0,0.08)'
+                bgcolor: '#4A9FBF',
+                borderRadius: '50px',
+                textTransform: 'none',
+                px: 5,
+                py: 1.5,
+                fontSize: '1rem',
+                fontWeight: 600
               }}
             >
-              <IconButton
-                onClick={handleCloseModal}
-                sx={{ position: 'absolute', top: 16, left: 16, bgcolor: 'rgba(255,255,255,0.9)', color: '#1A6B8A', zIndex: 10, '&:hover': { bgcolor: '#FFFFFF' } }}
-              >
-                <CloseIcon />
-              </IconButton>
+               Join as Artist
+            </Button>
+          </Box>
+        ) : (
+          <Grid container spacing={3}>
+            <AnimatePresence>
+              {filteredItems.map((item, index) => (
+                <Grid item xs={12} sm={6} md={3} key={item.id}>
+                  <motion.div
+                    initial={{ opacity: 0, y: 20 }}
+                    animate={{ opacity: 1, y: 0 }}
+                    transition={{ duration: 0.3, delay: index * 0.05 }}
+                    whileHover={{ y: -8 }}
+                  >
+                    <Card
+                      onClick={() => handleOpenModal(item)}
+                      sx={{
+                        bgcolor: '#FFFFFF',
+                        borderRadius: '20px',
+                        cursor: 'pointer',
+                        overflow: 'hidden',
+                        height: '100%',
+                        display: 'flex',
+                        flexDirection: 'column',
+                        transition: 'all 0.3s ease',
+                        boxShadow: '0 8px 20px rgba(0,0,0,0.05)',
+                        '&:hover': {
+                          boxShadow: '0 20px 35px rgba(74, 159, 191, 0.15)',
+                        }
+                      }}
+                    >
+                      <Box sx={{ position: 'relative', height: 220, overflow: 'hidden' }}>
+                        <Box
+                          component="img"
+                          src={item.imageUrl}
+                          alt={item.title}
+                          sx={{
+                            width: '100%',
+                            height: '100%',
+                            objectFit: 'cover',
+                            transition: 'transform 0.3s',
+                            '&:hover': { transform: 'scale(1.05)' }
+                          }}
+                        />
+                        {item.type === 'commission' ? (
+                          <Chip
+                            label="Commission"
+                            size="small"
+                            sx={{
+                              position: 'absolute',
+                              top: 16,
+                              left: 16,
+                              bgcolor: '#4A9FBF',
+                              color: 'white',
+                              fontWeight: 700,
+                              fontSize: '0.7rem',
+                              borderRadius: '20px'
+                            }}
+                          />
+                        ) : (
+                          <Chip
+                            label="Portfolio"
+                            size="small"
+                            sx={{
+                              position: 'absolute',
+                              top: 16,
+                              left: 16,
+                              bgcolor: '#8B5CF6',
+                              color: 'white',
+                              fontWeight: 700,
+                              fontSize: '0.7rem',
+                              borderRadius: '20px'
+                            }}
+                          />
+                        )}
+                        <IconButton
+                          sx={{
+                            position: 'absolute',
+                            top: 12,
+                            right: 12,
+                            bgcolor: 'rgba(255,255,255,0.9)',
+                            '&:hover': { bgcolor: '#FFFFFF' }
+                          }}
+                        >
+                          <BookmarkBorderIcon fontSize="small" />
+                        </IconButton>
+                      </Box>
 
-              {/* Sisi Kiri: Gambar Sampel */}
-              <Box sx={{ flex: 1.1, bgcolor: '#F4F8FA', overflowY: 'auto', p: 2, display: 'flex', flexDirection: 'column', gap: 2 }}>
-                {selectedService.images.map((imgUrl, i) => (
-                  <Box
-                    key={i}
-                    component="img"
-                    src={imgUrl}
-                    alt="sample"
-                    sx={{ width: '100%', borderRadius: '16px', objectFit: 'contain', bgcolor: '#FFFFFF', border: '1px solid rgba(74, 159, 191, 0.1)' }}
-                  />
-                ))}
-              </Box>
+                      <CardContent sx={{ p: 2.5, flexGrow: 1 }}>
+                        <Typography variant="caption" sx={{ color: '#4A9FBF', fontWeight: 700, letterSpacing: '0.5px' }}>
+                          {item.category}
+                        </Typography>
+                        <Typography variant="subtitle1" fontWeight={800} sx={{ mt: 1, mb: 1.5, lineHeight: 1.3, minHeight: '48px' }}>
+                          {item.title}
+                        </Typography>
 
-              {/* Sisi Kanan: Detail Informasi */}
-              <Box sx={{ flex: 1, p: 4, display: 'flex', flexDirection: 'column', justifyContent: 'space-between', overflowY: 'auto', bgcolor: '#FFFFFF' }}>
-                <Box>
-                  <Typography variant="caption" sx={{ color: '#4A9FBF', fontWeight: 800, textTransform: 'uppercase', letterSpacing: 1 }}>
-                    {selectedService.category}
-                  </Typography>
-                  <Typography variant="h5" fontWeight={800} sx={{ mt: 1, mb: 1, color: '#1A6B8A', lineHeight: 1.3 }}>
-                    {selectedService.title}
-                  </Typography>
-
-                  <Typography variant="body2" sx={{ color: '#5D6D7E', mt: 1 }}>Starting from</Typography>
-                  <Typography variant="h4" fontWeight={900} sx={{ color: '#4A9FBF', mb: 3 }}>{selectedService.price}</Typography>
-
-                  <Typography variant="subtitle2" sx={{ color: '#1C2833', mb: 1.5, fontWeight: 700 }}>Terms & Licenses:</Typography>
-                  <Stack spacing={1} sx={{ mb: 4 }}>
-                    {selectedService.licenses.map((lic, idx) => (
-                      <Stack direction="row" alignItems="center" spacing={1} key={idx}>
-                        <CheckIcon sx={{ color: '#87D37C', fontSize: 18 }} />
-                        <Typography variant="body2" sx={{ color: '#5D6D7E', fontWeight: 500 }}>{lic}</Typography>
-                        <InfoIcon sx={{ color: '#BDC3C7', fontSize: 16, ml: 'auto' }} />
-                      </Stack>
-                    ))}
-                  </Stack>
-
-                  {/* Profil Singkat Kreator */}
-                  <Stack direction="row" alignItems="center" justifyContent="space-between" sx={{ p: 2, bgcolor: '#F2F7F9', borderRadius: '18px', mb: 3 }}>
-                    <Stack direction="row" alignItems="center" spacing={1.5}>
-                      <Avatar src={selectedService.avatar} sx={{ width: 40, height: 40 }} />
-                      <Box>
-                        <Stack direction="row" alignItems="center" spacing={0.5}>
-                          <Typography variant="subtitle2" fontWeight={750} sx={{ color: '#1C2833' }}>{selectedService.artistName} {selectedService.emoji}</Typography>
+                        <Stack direction="row" alignItems="center" spacing={1.5} sx={{ mb: 2 }}>
+                          <Avatar src={item.avatar} sx={{ width: 28, height: 28 }} />
+                          <Typography variant="body2" sx={{ color: '#64748B', fontWeight: 500 }}>{item.artistName}</Typography>
                           <VerifiedIcon sx={{ color: '#4A9FBF', fontSize: 14 }} />
                         </Stack>
-                        <Typography variant="caption" sx={{ color: '#7F8C8D' }}>@kreator_lokal</Typography>
-                      </Box>
-                    </Stack>
-                    <Button variant="contained" size="small" sx={{ bgcolor: '#FFFFFF', color: '#4A9FBF', border: '1px solid rgba(74, 159, 191, 0.2)', '&:hover': { bgcolor: '#E8F4F8' } }}>
-                      Follow
-                    </Button>
-                  </Stack>
 
-                  {/* Catatan Info Syarat Layanan Tambahan (Sesuai Layout VGen Gambar 1) */}
-                  <Box sx={{ bgcolor: '#F2F7F9', p: 2, borderRadius: '14px', mb: 2 }}>
-                    <Typography variant="body2" sx={{ color: '#5D6D7E', lineHeight: 1.5, fontSize: '0.85rem' }}>
-                      Thanks for considering me for your commission! Please only start a request if you find the service details and my Terms of Service acceptable.
+                        {item.type === 'commission' && item.price && (
+                          <Typography variant="h6" fontWeight={800} sx={{ color: '#1A6B8A' }}>
+                            {item.price}
+                          </Typography>
+                        )}
+
+                        {item.tags && item.tags.length > 0 && (
+                          <Stack direction="row" spacing={1} sx={{ mt: 1.5, flexWrap: 'wrap', gap: 0.5 }}>
+                            {item.tags.slice(0, 2).map((tag, idx) => (
+                              <Chip
+                                key={idx}
+                                label={tag}
+                                size="small"
+                                variant="outlined"
+                                sx={{ fontSize: '0.65rem', height: '24px' }}
+                              />
+                            ))}
+                          </Stack>
+                        )}
+
+                        {item.type === 'commission' && (
+                          <Stack direction="row" alignItems="center" spacing={1} sx={{ mt: 1.5 }}>
+                            <StarIcon sx={{ color: '#FBBF24', fontSize: 16 }} />
+                            <Typography variant="body2" fontWeight={700}>{item.rating}</Typography>
+                            <Typography variant="caption" sx={{ color: '#94A3B8' }}>({item.reviews} reviews)</Typography>
+                          </Stack>
+                        )}
+                      </CardContent>
+                    </Card>
+                  </motion.div>
+                </Grid>
+              ))}
+            </AnimatePresence>
+          </Grid>
+        )}
+      </Container>
+
+      <PlatformCommitment />
+
+      {/* DETAIL MODAL - Supports both Commission and Portfolio */}
+      <Modal
+        open={Boolean(selectedItem)}
+        onClose={handleCloseModal}
+        sx={{ display: 'flex', alignItems: 'center', justifyContent: 'center', p: 3 }}
+      >
+        <Box sx={{ outline: 'none', width: '100%', maxWidth: '1050px' }}>
+          {selectedItem && (
+            <Box sx={{
+              bgcolor: '#FFFFFF',
+              borderRadius: '28px',
+              overflow: 'hidden',
+              display: 'flex',
+              flexDirection: { xs: 'column', md: 'row' },
+              maxHeight: '90vh'
+            }}>
+              {/* LEFT SIDE - IMAGE */}
+              <Box sx={{ flex: 1.2, bgcolor: '#F8FAFC', overflowY: 'auto' }}>
+                <img
+                  src={selectedItem.imageUrl}
+                  alt={selectedItem.title}
+                  style={{ width: '100%', height: 'auto', display: 'block' }}
+                />
+              </Box>
+
+              {/* RIGHT SIDE - DETAILS */}
+              <Box sx={{ flex: 1, p: 4, overflowY: 'auto', position: 'relative' }}>
+                <IconButton
+                  onClick={handleCloseModal}
+                  sx={{
+                    position: 'absolute',
+                    top: 16,
+                    right: 16,
+                    bgcolor: '#FFFFFF',
+                    boxShadow: '0 2px 8px rgba(0,0,0,0.1)',
+                    '&:hover': { bgcolor: '#F1F5F9' }
+                  }}
+                >
+                  <CloseIcon />
+                </IconButton>
+
+                <Chip
+                  label={selectedItem.type === 'commission' ? 'Commission' : 'Portfolio'}
+                  size="small"
+                  sx={{
+                    bgcolor: selectedItem.type === 'commission' ? '#4A9FBF' : '#8B5CF6',
+                    color: 'white',
+                    fontWeight: 700,
+                    mb: 2
+                  }}
+                />
+
+                <Typography variant="h4" fontWeight={800} sx={{ mb: 2, color: '#1A6B8A' }}>
+                  {selectedItem.title}
+                </Typography>
+
+                {selectedItem.type === 'commission' && (
+                  <>
+                    <Typography variant="body2" sx={{ color: '#64748B', mb: 1 }}>Starting from</Typography>
+                    <Typography variant="h3" fontWeight={800} sx={{ color: '#4A9FBF', mb: 3 }}>
+                      {selectedItem.price}
                     </Typography>
+                  </>
+                )}
+
+                <Typography variant="body2" sx={{ color: '#475569', mb: 4, lineHeight: 1.7 }}>
+                  {selectedItem.description || 'No description provided.'}
+                </Typography>
+
+                {selectedItem.type === 'commission' && (
+                  <Box sx={{ display: 'flex', gap: 4, mb: 4, pb: 3, borderBottom: '1px solid #E2E8F0' }}>
+                    <Box>
+                      <Typography variant="caption" sx={{ color: '#94A3B8' }}>Turnaround</Typography>
+                      <Typography variant="body1" fontWeight={700}>{selectedItem.turnaround}</Typography>
+                    </Box>
+                    <Box>
+                      <Typography variant="caption" sx={{ color: '#94A3B8' }}>Revisions</Typography>
+                      <Typography variant="body1" fontWeight={700}>{selectedItem.revisions}</Typography>
+                    </Box>
+                    <Box>
+                      <Typography variant="caption" sx={{ color: '#94A3B8' }}>Slots Left</Typography>
+                      <Typography variant="body1" fontWeight={700}>{selectedItem.slots}</Typography>
+                    </Box>
                   </Box>
-                </Box>
+                )}
 
-                {/* Bagian Bawah Action */}
-                <Box>
-                  <Stack direction="row" spacing={2} sx={{ mb: 1.5 }} alignItems="center">
-                    <Button variant="contained" fullWidth sx={{ bgcolor: '#4A9FBF', color: 'white', fontWeight: 700, py: 1.5, borderRadius: '14px', '&:hover': { bgcolor: '#1A6B8A' }, textTransform: 'none' }}>
-                      Accept terms to start request
-                    </Button>
-                    <IconButton sx={{ border: '1px solid rgba(74, 159, 191, 0.2)', color: '#4A9FBF', borderRadius: '14px', p: 1.5 }}>
-                      <ChatBubbleOutlineIcon />
-                    </IconButton>
-                  </Stack>
-                  <Chip
-                    label="Only 3 slots left"
-                    size="small"
-                    sx={{
-                      bgcolor: 'rgba(135, 211, 124, 0.2)',
-                      color: '#27AE60',
-                      fontWeight: 800,
-                      borderRadius: '8px',
-                      width: '100%',
-                      py: 1.8
-                    }}
-                  />
-                </Box>
+                {selectedItem.tags && selectedItem.tags.length > 0 && (
+                  <Box sx={{ mb: 4 }}>
+                    <Typography variant="caption" sx={{ color: '#64748B', fontWeight: 600, mb: 1, display: 'block' }}>
+                      Tags
+                    </Typography>
+                    <Stack direction="row" spacing={1} flexWrap="wrap" gap={1}>
+                      {selectedItem.tags.map((tag, idx) => (
+                        <Chip key={idx} label={tag} size="small" variant="outlined" />
+                      ))}
+                    </Stack>
+                  </Box>
+                )}
 
+                <Stack direction="row" alignItems="center" spacing={2} sx={{ mb: 4, p: 2.5, bgcolor: '#F8FAFC', borderRadius: '20px' }}>
+                  <Avatar src={selectedItem.avatar} sx={{ width: 56, height: 56 }} />
+                  <Box>
+                    <Typography variant="subtitle1" fontWeight={800}>{selectedItem.artistName}</Typography>
+                    <Typography variant="caption" sx={{ color: '#64748B' }}>Verified Artist</Typography>
+                  </Box>
+                  <Button
+                    variant="outlined"
+                    sx={{ ml: 'auto', borderRadius: '40px', textTransform: 'none', fontWeight: 600 }}
+                  >
+                    Send Message
+                  </Button>
+                </Stack>
+
+                <Button
+                  component={Link}
+                  to="/artists"
+                  fullWidth
+                  variant="contained"
+                  sx={{
+                    bgcolor: '#4A9FBF',
+                    borderRadius: '50px',
+                    py: 1.8,
+                    textTransform: 'none',
+                    fontWeight: 700,
+                    fontSize: '1rem',
+                    '&:hover': { bgcolor: '#1A6B8A' }
+                  }}
+                >
+                  {selectedItem.type === 'commission' ? 'Request Commission' : 'View More Artwork'}
+                </Button>
               </Box>
             </Box>
           )}
