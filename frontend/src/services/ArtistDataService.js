@@ -1,5 +1,6 @@
 // src/services/ArtistDataService.js
 // SEMUA DATA DIAMBIL DARI USER YANG REAL, TIDAK ADA DUMMY
+// DIPERBAIKI: selalu return object valid meskipun artistName tidak ditemukan
 
 const getCurrentUser = () => {
   const saved = localStorage.getItem('user');
@@ -13,24 +14,23 @@ const getAllRegisteredUsers = () => {
 
 // Ambil data artist REAL dari user yang login atau registered_users
 export const getArtistData = (artistName) => {
+  // Default fallback
+  const defaultData = {
+    id: null,
+    name: 'Artist',
+    username: 'artist',
+    avatar: null,
+    bio: '',
+    rating: 0,
+    totalReviews: 0,
+    isVerified: false
+  };
+
   if (!artistName) {
-    const currentUser = getCurrentUser();
-    if (currentUser) {
-      return {
-        id: currentUser.id,
-        name: currentUser.fullName,
-        username: currentUser.username,
-        avatar: currentUser.avatarUrl || null,
-        bio: currentUser.bio || '',
-        rating: 0,
-        totalReviews: 0,
-        isVerified: currentUser.isVerified === true
-      };
-    }
-    return null;
+    return defaultData;
   }
 
-  // Cari di current user dulu
+  // 1. Cek current user
   const currentUser = getCurrentUser();
   if (currentUser && (currentUser.fullName === artistName || currentUser.username === artistName)) {
     return {
@@ -39,13 +39,13 @@ export const getArtistData = (artistName) => {
       username: currentUser.username,
       avatar: currentUser.avatarUrl || null,
       bio: currentUser.bio || '',
-      rating: 0,
-      totalReviews: 0,
+      rating: currentUser.rating || 0,
+      totalReviews: currentUser.totalReviews || 0,
       isVerified: currentUser.isVerified === true
     };
   }
 
-  // Cari di registered_users
+  // 2. Cari di registered_users
   const users = getAllRegisteredUsers();
   const foundUser = users.find(u => u.fullName === artistName || u.username === artistName);
   if (foundUser) {
@@ -55,13 +55,14 @@ export const getArtistData = (artistName) => {
       username: foundUser.username,
       avatar: foundUser.avatarUrl || null,
       bio: foundUser.bio || '',
-      rating: 0,
-      totalReviews: 0,
+      rating: foundUser.rating || 0,
+      totalReviews: foundUser.totalReviews || 0,
       isVerified: foundUser.isVerified === true
     };
   }
 
-  return null;
+  // 3. Tidak ditemukan, return default
+  return defaultData;
 };
 
 // Ambil rating dari commission yang sudah completed
@@ -89,6 +90,7 @@ export const getArtistReviews = (artistId, artistName) => {
       totalReviews: completedRequests.length
     };
   } catch (error) {
+    console.error('Error getArtistReviews:', error);
     return { rating: 0, totalReviews: 0 };
   }
 };

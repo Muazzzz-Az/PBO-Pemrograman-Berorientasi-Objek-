@@ -1,6 +1,6 @@
-// src/components/ShopPage.js
+// src/components/ShopPage.js - FULLY FIXED with per-user notifications
 import React, { useState, useEffect } from 'react';
-import { Link, useNavigate } from 'react-router-dom';
+import { useNavigate } from 'react-router-dom';
 import {
   Box,
   Container,
@@ -29,51 +29,34 @@ import {
   Divider
 } from '@mui/material';
 import SearchIcon from '@mui/icons-material/Search';
-import ShoppingCartIcon from '@mui/icons-material/ShoppingCart';
+import ChatIcon from '@mui/icons-material/Chat';
 import StoreIcon from '@mui/icons-material/Store';
 import FilterListIcon from '@mui/icons-material/FilterList';
 import SortIcon from '@mui/icons-material/Sort';
 import CloseIcon from '@mui/icons-material/Close';
-import DownloadIcon from '@mui/icons-material/Download';
-import PaymentIcon from '@mui/icons-material/Payment';
+import CheckCircleIcon from '@mui/icons-material/CheckCircle';
 
 // ==========================================
 // SHOP SERVICE
 // ==========================================
 const SHOP_PRODUCTS_KEY = 'creartsi_shop_products';
-const SHOP_PURCHASES_KEY = 'creartsi_shop_purchases';
+const PRODUCT_INTERESTS_KEY = 'creartsi_product_interests';
 
-// Get all shop products
+// Get all shop products - FIXED
 const getShopProducts = () => {
   const saved = localStorage.getItem(SHOP_PRODUCTS_KEY);
   return saved ? JSON.parse(saved) : [];
 };
 
-// Get products by category
-const getProductsByCategory = (category) => {
-  const products = getShopProducts();
-  if (!category) return products;
-  return products.filter(p => p.category === category);
-};
-
-// Save purchase
-const savePurchase = (purchase) => {
-  const purchases = JSON.parse(localStorage.getItem(SHOP_PURCHASES_KEY) || '[]');
-  purchases.push(purchase);
-  localStorage.setItem(SHOP_PURCHASES_KEY, JSON.stringify(purchases));
-  return purchase;
-};
-
-// Get user purchases
-const getUserPurchases = (userId) => {
-  const purchases = JSON.parse(localStorage.getItem(SHOP_PURCHASES_KEY) || '[]');
-  return purchases.filter(p => p.buyerId === userId);
-};
-
-// Get product by ID
-const getProductById = (id) => {
-  const products = getShopProducts();
-  return products.find(p => p.id === parseInt(id));
+// Save product interest (when user wants to buy)
+const saveProductInterest = (interest) => {
+  const interests = JSON.parse(localStorage.getItem(PRODUCT_INTERESTS_KEY) || '[]');
+  const exists = interests.find(i => i.productId === interest.productId && i.buyerId === interest.buyerId);
+  if (!exists) {
+    interests.push(interest);
+    localStorage.setItem(PRODUCT_INTERESTS_KEY, JSON.stringify(interests));
+  }
+  return interest;
 };
 
 // Categories
@@ -99,7 +82,7 @@ const categories = [
 // ==========================================
 // PRODUCT CARD COMPONENT
 // ==========================================
-const ProductCard = ({ product, onBuy }) => {
+const ProductCard = ({ product, onContact }) => {
   return (
     <Card sx={{
       borderRadius: '20px',
@@ -182,8 +165,8 @@ const ProductCard = ({ product, onBuy }) => {
         <Button
           fullWidth
           variant="contained"
-          startIcon={<ShoppingCartIcon />}
-          onClick={() => onBuy(product)}
+          startIcon={<ChatIcon />}
+          onClick={() => onContact(product)}
           sx={{
             bgcolor: '#4A9FBF',
             borderRadius: '30px',
@@ -192,7 +175,7 @@ const ProductCard = ({ product, onBuy }) => {
             '&:hover': { bgcolor: '#1A6B8A' }
           }}
         >
-          Buy Now
+          💬 Chat to Buy
         </Button>
       </CardContent>
     </Card>
@@ -200,16 +183,27 @@ const ProductCard = ({ product, onBuy }) => {
 };
 
 // ==========================================
-// CHECKOUT MODAL
+// INTEREST MODAL (FIXED - dengan per-user notifications)
 // ==========================================
-const CheckoutModal = ({ open, onClose, product, onPurchaseComplete }) => {
+const InterestModal = ({ open, onClose, product, onInterestConfirmed, navigate }) => {
   const [loading, setLoading] = useState(false);
-  const [paymentMethod, setPaymentMethod] = useState('bank_transfer');
-  const currentUser = JSON.parse(localStorage.getItem('user'));
 
-  const handlePurchase = () => {
-    if (!currentUser) {
-      alert('Please login first to purchase');
+  const handleConfirm = () => {
+    // Ambil user langsung dari localStorage setiap kali (paling aman)
+    const currentUserFromStorage = JSON.parse(localStorage.getItem('user'));
+
+    console.log('InterestModal - user from storage:', currentUserFromStorage);
+
+    if (!currentUserFromStorage || !currentUserFromStorage.id) {
+      alert('Please login first to contact artist');
+      onClose();
+      if (navigate) navigate('/login');
+      return;
+    }
+
+    if (!product?.artistId) {
+      alert('Error: Artist ID not found for this product');
+      console.error('Product missing artistId:', product);
       onClose();
       return;
     }
@@ -217,76 +211,73 @@ const CheckoutModal = ({ open, onClose, product, onPurchaseComplete }) => {
     setLoading(true);
 
     setTimeout(() => {
-      // Create purchase record
-      const purchase = {
+      // Buat roomId untuk chat
+      const roomId = `chat_${Math.min(currentUserFromStorage.id, product.artistId)}_${Math.max(currentUserFromStorage.id, product.artistId)}`;
+
+      // Save interest to localStorage
+      const interest = {
         id: Date.now(),
         productId: product.id,
         productTitle: product.title,
         productPrice: product.price,
-        productFile: product.digitalFile,
+        productImage: product.coverImage,
         artistId: product.artistId,
         artistName: product.artistName,
-        buyerId: currentUser.id,
-        buyerName: currentUser.fullName,
-        buyerEmail: currentUser.email,
-        paymentMethod: paymentMethod,
-        status: 'completed',
-        purchaseDate: new Date().toISOString(),
-        downloadUrl: product.digitalFile?.base64 || null,
-        downloadCount: 0
+        buyerId: currentUserFromStorage.id,
+        buyerName: currentUserFromStorage.fullName || currentUserFromStorage.username,
+        buyerUsername: currentUserFromStorage.username,
+        roomId: roomId,
+        status: 'negotiation',
+        createdAt: new Date().toISOString()
       };
 
-      savePurchase(purchase);
+      saveProductInterest(interest);
 
-      // Update product sold count
-      const allProducts = getShopProducts();
-      const updatedProducts = allProducts.map(p => {
-        if (p.id === product.id) {
-          return { ...p, soldCount: (p.soldCount || 0) + 1, stock: Math.max(0, (p.stock || 0) - 1) };
-        }
-        return p;
-      });
-      localStorage.setItem(SHOP_PRODUCTS_KEY, JSON.stringify(updatedProducts));
+      // Buat chat history kosong jika belum ada
+      const existingChat = localStorage.getItem(roomId);
+      if (!existingChat) {
+        localStorage.setItem(roomId, JSON.stringify([]));
+      }
 
-      // Add notification
-      const notifications = JSON.parse(localStorage.getItem('user_notifications') || '[]');
-      notifications.unshift({
-        id: Date.now(),
-        message: `✅ Purchase successful! You bought "${product.title}". Download your file now!`,
-        type: 'PURCHASE_SUCCESS',
-        isRead: false,
-        timestamp: new Date().toLocaleTimeString()
-      });
-      localStorage.setItem('user_notifications', JSON.stringify(notifications));
-
-      // Notify artist
+      // Notify artist (sudah per artistId)
       const artistNotifs = JSON.parse(localStorage.getItem(`artist_notifications_${product.artistId}`) || '[]');
       artistNotifs.unshift({
         id: Date.now(),
-        type: 'NEW_PURCHASE',
-        title: 'New Purchase! 🛍️',
-        message: `${currentUser.fullName} purchased "${product.title}" for Rp ${product.price.toLocaleString('id-ID')}`,
+        type: 'PRODUCT_INTEREST',
+        title: '🛍️ Someone wants to buy your product!',
+        message: `${currentUserFromStorage.fullName || currentUserFromStorage.username} is interested in "${product.title}". Price: Rp ${product.price?.toLocaleString('id-ID')}`,
+        productId: product.id,
+        buyerId: currentUserFromStorage.id,
+        buyerName: currentUserFromStorage.fullName || currentUserFromStorage.username,
+        roomId: roomId,
         isRead: false,
         timestamp: new Date().toISOString()
       });
       localStorage.setItem(`artist_notifications_${product.artistId}`, JSON.stringify(artistNotifs));
 
+      // 🔥 PERBAIKAN: Add to user notifications (PER USER, bukan global)
+      const NOTIF_KEY = `user_notifications_${currentUserFromStorage.id}`;
+      const notifications = JSON.parse(localStorage.getItem(NOTIF_KEY) || '[]');
+      notifications.unshift({
+        id: Date.now(),
+        message: `💬 You expressed interest in "${product.title}". Chat with ${product.artistName} to negotiate!`,
+        type: 'INTEREST_CONFIRMED',
+        isRead: false,
+        timestamp: new Date().toLocaleTimeString()
+      });
+      localStorage.setItem(NOTIF_KEY, JSON.stringify(notifications));
+
       window.dispatchEvent(new Event('storage'));
 
       setLoading(false);
-      onPurchaseComplete(purchase);
+      onInterestConfirmed(interest);
       onClose();
 
-      // Show download dialog
-      setTimeout(() => {
-        if (product.digitalFile?.base64) {
-          const link = document.createElement('a');
-          link.href = product.digitalFile.base64;
-          link.download = product.digitalFile.name || 'download.zip';
-          link.click();
-        }
-      }, 500);
-    }, 1500);
+      // Redirect ke halaman messages dengan navigate
+      if (navigate) {
+        navigate(`/messages?userId=${product.artistId}&productId=${product.id}&productTitle=${encodeURIComponent(product.title)}&productPrice=${product.price}`);
+      }
+    }, 1000);
   };
 
   if (!product) return null;
@@ -295,7 +286,7 @@ const CheckoutModal = ({ open, onClose, product, onPurchaseComplete }) => {
     <Dialog open={open} onClose={onClose} maxWidth="sm" fullWidth>
       <DialogTitle sx={{ bgcolor: '#4A9FBF', color: 'white' }}>
         <Box display="flex" justifyContent="space-between" alignItems="center">
-          <Typography fontWeight={800}>Checkout</Typography>
+          <Typography fontWeight={800}>Contact Artist</Typography>
           <IconButton onClick={onClose} sx={{ color: 'white' }}>
             <CloseIcon />
           </IconButton>
@@ -307,7 +298,7 @@ const CheckoutModal = ({ open, onClose, product, onPurchaseComplete }) => {
           <Typography variant="subtitle2" color="text.secondary">Product</Typography>
           <Typography variant="body1" fontWeight={700}>{product.title}</Typography>
 
-          <Typography variant="subtitle2" color="text.secondary" sx={{ mt: 2 }}>Seller</Typography>
+          <Typography variant="subtitle2" color="text.secondary" sx={{ mt: 2 }}>Artist</Typography>
           <Typography variant="body1">{product.artistName}</Typography>
 
           <Typography variant="subtitle2" color="text.secondary" sx={{ mt: 2 }}>Price</Typography>
@@ -316,34 +307,24 @@ const CheckoutModal = ({ open, onClose, product, onPurchaseComplete }) => {
           </Typography>
         </Box>
 
-        <Typography variant="subtitle2" fontWeight={700} sx={{ mb: 1 }}>Payment Method</Typography>
-        <TextField
-          select
-          fullWidth
-          size="small"
-          value={paymentMethod}
-          onChange={(e) => setPaymentMethod(e.target.value)}
-          sx={{ mb: 3 }}
-        >
-          <MenuItem value="bank_transfer">🏦 Bank Transfer (BNI/BCA/Mandiri)</MenuItem>
-          <MenuItem value="credit_card">💳 Credit Card</MenuItem>
-          <MenuItem value="ewallet">📱 E-Wallet (OVO/GoPay/Dana)</MenuItem>
-        </TextField>
+        <Alert severity="info" sx={{ borderRadius: '12px', mb: 2 }}>
+          💬 You will be connected to {product.artistName} via chat. Discuss details, negotiate price, and arrange payment directly.
+        </Alert>
 
-        <Alert severity="info" sx={{ borderRadius: '12px' }}>
-          After purchase, you will get instant download link for your digital product.
+        <Alert severity="warning" sx={{ borderRadius: '12px' }}>
+          ⚠️ Payment is done outside the platform. CreartsI is not responsible for transactions made outside. Please communicate clearly and keep proof of payment.
         </Alert>
       </DialogContent>
 
       <DialogActions sx={{ p: 3, borderTop: '1px solid #E2E8F0' }}>
         <Button onClick={onClose} variant="outlined">Cancel</Button>
         <Button
-          onClick={handlePurchase}
+          onClick={handleConfirm}
           variant="contained"
           disabled={loading}
           sx={{ bgcolor: '#4A9FBF' }}
         >
-          {loading ? 'Processing...' : `Pay Rp ${product.price?.toLocaleString('id-ID')}`}
+          {loading ? 'Processing...' : '💬 Start Chat & Negotiate'}
         </Button>
       </DialogActions>
     </Dialog>
@@ -362,12 +343,10 @@ function ShopPage() {
   const [sortBy, setSortBy] = useState('latest');
   const [loading, setLoading] = useState(true);
   const [selectedProduct, setSelectedProduct] = useState(null);
-  const [checkoutOpen, setCheckoutOpen] = useState(false);
-  const [purchaseSuccess, setPurchaseSuccess] = useState(null);
+  const [interestModalOpen, setInterestModalOpen] = useState(false);
+  const [interestSuccess, setInterestSuccess] = useState(null);
   const [page, setPage] = useState(1);
   const itemsPerPage = 12;
-
-  const currentUser = JSON.parse(localStorage.getItem('user'));
 
   useEffect(() => {
     loadProducts();
@@ -387,12 +366,10 @@ function ShopPage() {
   const filterAndSort = () => {
     let result = [...products];
 
-    // Category filter
     if (selectedCategory !== 'all') {
       result = result.filter(p => p.category === selectedCategory);
     }
 
-    // Search filter
     if (searchTerm) {
       result = result.filter(p =>
         p.title.toLowerCase().includes(searchTerm.toLowerCase()) ||
@@ -400,7 +377,6 @@ function ShopPage() {
       );
     }
 
-    // Sort
     switch (sortBy) {
       case 'latest':
         result.sort((a, b) => new Date(b.createdAt) - new Date(a.createdAt));
@@ -422,20 +398,30 @@ function ShopPage() {
     setPage(1);
   };
 
-  const handleBuy = (product) => {
-    if (!currentUser) {
-      alert('Please login first to purchase');
+  const handleContactArtist = (product) => {
+    const userFromStorage = JSON.parse(localStorage.getItem('user'));
+
+    console.log('handleContactArtist - user from storage:', userFromStorage);
+    console.log('handleContactArtist - product:', product);
+
+    if (!userFromStorage || !userFromStorage.id) {
+      alert('Please login first to contact artist');
       navigate('/login');
       return;
     }
+
+    if (!product.artistId) {
+      alert('Error: This product does not have artist information. Please contact support.');
+      return;
+    }
+
     setSelectedProduct(product);
-    setCheckoutOpen(true);
+    setInterestModalOpen(true);
   };
 
-  const handlePurchaseComplete = (purchase) => {
-    setPurchaseSuccess(purchase);
-    loadProducts();
-    setTimeout(() => setPurchaseSuccess(null), 5000);
+  const handleInterestConfirmed = (interest) => {
+    setInterestSuccess(interest);
+    setTimeout(() => setInterestSuccess(null), 5000);
   };
 
   const totalPages = Math.ceil(filteredProducts.length / itemsPerPage);
@@ -444,7 +430,6 @@ function ShopPage() {
     page * itemsPerPage
   );
 
-  // Featured products (top selling)
   const featuredProducts = [...products].sort((a, b) => (b.soldCount || 0) - (a.soldCount || 0)).slice(0, 6);
 
   return (
@@ -456,7 +441,7 @@ function ShopPage() {
             🛍️ Shop Human-Made Digital Products
           </Typography>
           <Typography variant="body1" sx={{ color: '#64748B', maxWidth: 600 }}>
-            Support independent creators. Download instantly after purchase. 100% original artwork.
+            Chat with artists, negotiate prices, and purchase directly. 100% original artwork from Indonesian creators.
           </Typography>
         </Container>
       </Box>
@@ -542,7 +527,7 @@ function ShopPage() {
           <Grid container spacing={3}>
             {featuredProducts.slice(0, 4).map((product) => (
               <Grid item xs={12} sm={6} md={3} key={product.id}>
-                <ProductCard product={product} onBuy={handleBuy} />
+                <ProductCard product={product} onContact={handleContactArtist} />
               </Grid>
             ))}
           </Grid>
@@ -574,7 +559,7 @@ function ShopPage() {
             <Grid container spacing={3}>
               {paginatedProducts.map((product) => (
                 <Grid item xs={12} sm={6} md={3} key={product.id}>
-                  <ProductCard product={product} onBuy={handleBuy} />
+                  <ProductCard product={product} onContact={handleContactArtist} />
                 </Grid>
               ))}
             </Grid>
@@ -599,30 +584,33 @@ function ShopPage() {
         )}
       </Container>
 
-      {/* Checkout Modal */}
-      <CheckoutModal
-        open={checkoutOpen}
-        onClose={() => setCheckoutOpen(false)}
+      {/* Interest Modal */}
+      <InterestModal
+        open={interestModalOpen}
+        onClose={() => setInterestModalOpen(false)}
         product={selectedProduct}
-        onPurchaseComplete={handlePurchaseComplete}
+        onInterestConfirmed={handleInterestConfirmed}
+        navigate={navigate}
       />
 
-      {/* Purchase Success Snackbar */}
+      {/* Success Snackbar */}
       <Snackbar
-        open={!!purchaseSuccess}
+        open={!!interestSuccess}
         autoHideDuration={5000}
-        onClose={() => setPurchaseSuccess(null)}
+        onClose={() => setInterestSuccess(null)}
         anchorOrigin={{ vertical: 'bottom', horizontal: 'center' }}
       >
         <Alert severity="success" sx={{ borderRadius: '16px' }}>
           <Stack direction="row" alignItems="center" spacing={2}>
-            <span>✅ Purchase successful! Your download has started.</span>
+            <CheckCircleIcon />
+            <span>✅ Request sent! You can now chat with the artist.</span>
             <Button
               size="small"
               variant="outlined"
-              onClick={() => navigate('/my-purchases')}
+              onClick={() => navigate('/messages')}
+              sx={{ borderRadius: '20px' }}
             >
-              My Purchases
+              Go to Chats
             </Button>
           </Stack>
         </Alert>

@@ -1,4 +1,4 @@
-// src/components/Navbar.js - Enhanced Version
+// src/components/Navbar.js - Enhanced Version with Per-User Notifications
 import React, { useState, useEffect } from 'react';
 import { Link, useNavigate, useLocation } from 'react-router-dom';
 import {
@@ -218,10 +218,18 @@ function Navbar({ isAuthenticated, user, setIsAuthenticated, setUser }) {
     return () => window.removeEventListener('categoryClicked', handleCategoryEvent);
   }, []);
 
-  // Load notifications from localStorage
+  // 🔥 PERBAIKAN: Load notifications from localStorage PER USER
   useEffect(() => {
     const loadNotifications = () => {
-      const savedNotifications = JSON.parse(localStorage.getItem('user_notifications')) || [];
+      const currentUser = JSON.parse(localStorage.getItem('user'));
+      if (!currentUser) {
+        setNotifications([]);
+        setUnreadCount(0);
+        return;
+      }
+
+      const NOTIF_KEY = `user_notifications_${currentUser.id}`;
+      const savedNotifications = JSON.parse(localStorage.getItem(NOTIF_KEY) || '[]');
       setNotifications(savedNotifications);
       const unread = savedNotifications.filter(n => !n.isRead).length;
       setUnreadCount(unread);
@@ -230,7 +238,8 @@ function Navbar({ isAuthenticated, user, setIsAuthenticated, setUser }) {
     loadNotifications();
 
     const handleStorageChange = (e) => {
-      if (e.key === 'user_notifications') {
+      const currentUser = JSON.parse(localStorage.getItem('user'));
+      if (currentUser && e.key === `user_notifications_${currentUser.id}`) {
         loadNotifications();
       }
     };
@@ -244,21 +253,25 @@ function Navbar({ isAuthenticated, user, setIsAuthenticated, setUser }) {
     const checkArtistNotification = () => {
       const notifData = localStorage.getItem('artist_notification');
       if (notifData && isAuthenticated) {
-        const existingNotifs = JSON.parse(localStorage.getItem('user_notifications')) || [];
-        const alreadyExists = existingNotifs.some(n => n.message === notifData);
+        const currentUser = JSON.parse(localStorage.getItem('user'));
+        if (currentUser) {
+          const NOTIF_KEY = `user_notifications_${currentUser.id}`;
+          const existingNotifs = JSON.parse(localStorage.getItem(NOTIF_KEY) || '[]');
+          const alreadyExists = existingNotifs.some(n => n.message === notifData);
 
-        if (!alreadyExists) {
-          const newNotification = {
-            id: Date.now(),
-            message: notifData,
-            type: 'ARTIST_APPROVAL',
-            isRead: false,
-            timestamp: new Date().toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit' })
-          };
-          const updatedNotifs = [newNotification, ...existingNotifs];
-          localStorage.setItem('user_notifications', JSON.stringify(updatedNotifs));
-          setNotifications(updatedNotifs);
-          setUnreadCount(prev => prev + 1);
+          if (!alreadyExists) {
+            const newNotification = {
+              id: Date.now(),
+              message: notifData,
+              type: 'ARTIST_APPROVAL',
+              isRead: false,
+              timestamp: new Date().toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit' })
+            };
+            const updatedNotifs = [newNotification, ...existingNotifs];
+            localStorage.setItem(NOTIF_KEY, JSON.stringify(updatedNotifs));
+            setNotifications(updatedNotifs);
+            setUnreadCount(prev => prev + 1);
+          }
         }
         localStorage.removeItem('artist_notification');
       }
@@ -290,26 +303,41 @@ function Navbar({ isAuthenticated, user, setIsAuthenticated, setUser }) {
   const handleNotifOpen = (event) => setAnchorElNotif(event.currentTarget);
   const handleNotifClose = () => setAnchorElNotif(null);
 
+  // 🔥 PERBAIKAN: Mark as read with per-user key
   const handleMarkAsRead = (notifId) => {
+    const currentUser = JSON.parse(localStorage.getItem('user'));
+    if (!currentUser) return;
+
+    const NOTIF_KEY = `user_notifications_${currentUser.id}`;
     const updatedNotifs = notifications.map(notif =>
       notif.id === notifId ? { ...notif, isRead: true } : notif
     );
-    localStorage.setItem('user_notifications', JSON.stringify(updatedNotifs));
+    localStorage.setItem(NOTIF_KEY, JSON.stringify(updatedNotifs));
     setNotifications(updatedNotifs);
     const unread = updatedNotifs.filter(n => !n.isRead).length;
     setUnreadCount(unread);
   };
 
+  // 🔥 PERBAIKAN: Mark all as read with per-user key
   const handleMarkAllAsRead = () => {
+    const currentUser = JSON.parse(localStorage.getItem('user'));
+    if (!currentUser) return;
+
+    const NOTIF_KEY = `user_notifications_${currentUser.id}`;
     const updatedNotifs = notifications.map(notif => ({ ...notif, isRead: true }));
-    localStorage.setItem('user_notifications', JSON.stringify(updatedNotifs));
+    localStorage.setItem(NOTIF_KEY, JSON.stringify(updatedNotifs));
     setNotifications(updatedNotifs);
     setUnreadCount(0);
   };
 
+  // 🔥 PERBAIKAN: Clear notification with per-user key
   const handleClearNotification = (notifId) => {
+    const currentUser = JSON.parse(localStorage.getItem('user'));
+    if (!currentUser) return;
+
+    const NOTIF_KEY = `user_notifications_${currentUser.id}`;
     const updatedNotifs = notifications.filter(n => n.id !== notifId);
-    localStorage.setItem('user_notifications', JSON.stringify(updatedNotifs));
+    localStorage.setItem(NOTIF_KEY, JSON.stringify(updatedNotifs));
     setNotifications(updatedNotifs);
     const unread = updatedNotifs.filter(n => !n.isRead).length;
     setUnreadCount(unread);

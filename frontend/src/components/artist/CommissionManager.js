@@ -1,39 +1,15 @@
-// src/components/artist/CommisionManager.js
+// src/components/artist/CommissionManager.js - FIXED with event trigger
 import React, { useState, useEffect, useRef } from 'react';
 import {
-  Box,
-  Typography,
-  Button,
-  Grid,
-  Card,
-  CardContent,
-  TextField,
-  Dialog,
-  DialogTitle,
-  DialogContent,
-  DialogActions,
-  IconButton,
-  Chip,
-  Switch,
-  InputAdornment,
-  FormControl,
-  InputLabel,
-  Select,
-  MenuItem,
-  Stack,
-  LinearProgress,
-  ImageList,
-  ImageListItem,
-  Alert,
-  Divider
+  Box, Typography, Button, Grid, Card, CardContent, TextField,
+  Dialog, DialogTitle, DialogContent, DialogActions, IconButton,
+  Chip, Switch, InputAdornment, FormControl, InputLabel, Select,
+  MenuItem, Stack, LinearProgress, ImageList, ImageListItem,
+  Alert, Divider
 } from '@mui/material';
 import {
-  Add as AddIcon,
-  Delete as DeleteIcon,
-  Edit as EditIcon,
-  Close as CloseIcon,
-  Image as ImageIcon,
-  CloudUpload as UploadIcon,
+  Add as AddIcon, Delete as DeleteIcon, Edit as EditIcon,
+  Close as CloseIcon, Image as ImageIcon, CloudUpload as UploadIcon,
   MusicNote as MusicIcon
 } from '@mui/icons-material';
 import BaseCard from './BaseCard';
@@ -49,7 +25,7 @@ const fileToBase64 = (file) => {
   });
 };
 
-// Image Upload Component
+// ========== KOMPONEN UPLOAD (sama seperti sebelumnya) ==========
 const ImageUploadField = ({ label, value, onChange, multiple = false }) => {
   const inputRef = useRef(null);
   const [loading, setLoading] = useState(false);
@@ -57,7 +33,6 @@ const ImageUploadField = ({ label, value, onChange, multiple = false }) => {
   const handleFileUpload = async (e) => {
     const files = Array.from(e.target.files);
     if (!files.length) return;
-
     setLoading(true);
     try {
       if (multiple) {
@@ -139,7 +114,6 @@ const ImageUploadField = ({ label, value, onChange, multiple = false }) => {
   );
 };
 
-// Audio Upload Component
 const AudioUploadField = ({ label, value, onChange }) => {
   const inputRef = useRef(null);
   const [loading, setLoading] = useState(false);
@@ -147,7 +121,6 @@ const AudioUploadField = ({ label, value, onChange }) => {
   const handleFileUpload = async (e) => {
     const file = e.target.files[0];
     if (!file) return;
-
     setLoading(true);
     try {
       const base64 = await fileToBase64(file);
@@ -191,6 +164,7 @@ const AudioUploadField = ({ label, value, onChange }) => {
   );
 };
 
+// ========== MAIN KOMPONEN ==========
 const CommissionManager = () => {
   const [commissions, setCommissions] = useState([]);
   const [openDialog, setOpenDialog] = useState(false);
@@ -199,31 +173,24 @@ const CommissionManager = () => {
   const [newInclude, setNewInclude] = useState('');
 
   const [formData, setFormData] = useState({
-    title: '',
-    category: '',
-    description: '',
-    priceFrom: '',
-    priceTo: '',
-    turnaround: '',
-    slots: 5,
-    revisions: 2,
-    includes: [],
-    isOpen: true,
-    coverImage: '',
-    sampleImages: [],
-    musicFile: '',
-    hasMusic: false,
-    terms: ''
+    title: '', category: '', description: '', priceFrom: '', priceTo: '',
+    turnaround: '', slots: 5, revisions: 2, includes: [], isOpen: true,
+    coverImage: '', sampleImages: [], musicFile: '', hasMusic: false, terms: ''
   });
 
+  // Load commissions dari localStorage saat komponen mount
   useEffect(() => {
     const saved = localStorage.getItem(COMMISSIONS_KEY);
     if (saved) setCommissions(JSON.parse(saved));
   }, []);
 
+  // Helper: simpan ke localStorage dan trigger event
   const saveCommissions = (data) => {
     localStorage.setItem(COMMISSIONS_KEY, JSON.stringify(data));
     setCommissions(data);
+    // 🚨 KIRIM EVENT KE SELURUH TAB
+    window.dispatchEvent(new CustomEvent('commissionDataChanged'));
+    console.log('✅ Commission saved, event triggered');
   };
 
   const handleOpenDialog = (commission = null) => {
@@ -249,21 +216,9 @@ const CommissionManager = () => {
     } else {
       setEditingCommission(null);
       setFormData({
-        title: '',
-        category: '',
-        description: '',
-        priceFrom: '',
-        priceTo: '',
-        turnaround: '',
-        slots: 5,
-        revisions: 2,
-        includes: [],
-        isOpen: true,
-        coverImage: '',
-        sampleImages: [],
-        musicFile: '',
-        hasMusic: false,
-        terms: ''
+        title: '', category: '', description: '', priceFrom: '', priceTo: '',
+        turnaround: '', slots: 5, revisions: 2, includes: [], isOpen: true,
+        coverImage: '', sampleImages: [], musicFile: '', hasMusic: false, terms: ''
       });
     }
     setOpenDialog(true);
@@ -290,9 +245,24 @@ const CommissionManager = () => {
     setTimeout(() => {
       let newCommissions;
       if (editingCommission) {
-        newCommissions = commissions.map(c => c.id === editingCommission.id ? { ...editingCommission, ...formData, updatedAt: new Date().toISOString() } : c);
+        newCommissions = commissions.map(c =>
+          c.id === editingCommission.id
+            ? { ...editingCommission, ...formData, updatedAt: new Date().toISOString() }
+            : c
+        );
       } else {
-        newCommissions = [...commissions, { id: Date.now(), ...formData, slotsLeft: formData.slots, createdAt: new Date().toISOString() }];
+        const currentUser = JSON.parse(localStorage.getItem('user'));
+        const artistName = currentUser?.fullName || currentUser?.username || 'Artist';
+        const newCommission = {
+          id: Date.now(),
+          ...formData,
+          artistId: currentUser?.id,
+          artistName: artistName,
+          slotsLeft: formData.slots,
+          createdAt: new Date().toISOString(),
+          updatedAt: new Date().toISOString()
+        };
+        newCommissions = [...commissions, newCommission];
       }
       saveCommissions(newCommissions);
       setLoading(false);
@@ -302,7 +272,8 @@ const CommissionManager = () => {
 
   const handleDelete = (id) => {
     if (window.confirm('Delete this commission package?')) {
-      saveCommissions(commissions.filter(c => c.id !== id));
+      const newCommissions = commissions.filter(c => c.id !== id);
+      saveCommissions(newCommissions);
     }
   };
 
@@ -312,19 +283,10 @@ const CommissionManager = () => {
     <Box>
       <Box display="flex" justifyContent="space-between" alignItems="center" mb={4}>
         <Box>
-          <Typography variant="h5" fontWeight={700} color="#1A6B8A">
-            Commission Packages
-          </Typography>
-          <Typography variant="body2" color="text.secondary">
-            Create and manage your commission services
-          </Typography>
+          <Typography variant="h5" fontWeight={700} color="#1A6B8A">Commission Packages</Typography>
+          <Typography variant="body2" color="text.secondary">Create and manage your commission services</Typography>
         </Box>
-        <Button
-          variant="contained"
-          startIcon={<AddIcon />}
-          onClick={() => handleOpenDialog()}
-          sx={{ bgcolor: '#4A9FBF', borderRadius: '8px', textTransform: 'none' }}
-        >
+        <Button variant="contained" startIcon={<AddIcon />} onClick={() => handleOpenDialog()} sx={{ bgcolor: '#4A9FBF', borderRadius: '8px', textTransform: 'none' }}>
           New Package
         </Button>
       </Box>
@@ -332,19 +294,9 @@ const CommissionManager = () => {
       {commissions.length === 0 ? (
         <BaseCard sx={{ textAlign: 'center', py: 8 }}>
           <ImageIcon sx={{ fontSize: 48, color: '#CBD5E1', mb: 2 }} />
-          <Typography variant="h6" color="text.secondary" gutterBottom>
-            No commission packages
-          </Typography>
-          <Typography variant="body2" color="text.secondary" sx={{ mb: 3 }}>
-            Create your first package to start receiving orders
-          </Typography>
-          <Button
-            variant="outlined"
-            onClick={() => handleOpenDialog()}
-            sx={{ borderColor: '#4A9FBF', color: '#4A9FBF', textTransform: 'none' }}
-          >
-            New Package
-          </Button>
+          <Typography variant="h6" color="text.secondary" gutterBottom>No commission packages</Typography>
+          <Typography variant="body2" color="text.secondary" sx={{ mb: 3 }}>Create your first package to start receiving orders</Typography>
+          <Button variant="outlined" onClick={() => handleOpenDialog()} sx={{ borderColor: '#4A9FBF', color: '#4A9FBF', textTransform: 'none' }}>New Package</Button>
         </BaseCard>
       ) : (
         <Grid container spacing={3}>
@@ -359,32 +311,16 @@ const CommissionManager = () => {
                       <ImageIcon sx={{ fontSize: 48, color: '#CBD5E1' }} />
                     </Box>
                   )}
-                  <Chip
-                    label={comm.isOpen ? 'Open' : 'Closed'}
-                    size="small"
-                    sx={{ position: 'absolute', top: 12, left: 12, bgcolor: comm.isOpen ? '#10B981' : '#EF4444', color: 'white' }}
-                  />
+                  <Chip label={comm.isOpen ? 'Open' : 'Closed'} size="small" sx={{ position: 'absolute', top: 12, left: 12, bgcolor: comm.isOpen ? '#10B981' : '#EF4444', color: 'white' }} />
                 </Box>
                 <CardContent sx={{ p: 3 }}>
-                  <Typography variant="caption" color="#4A9FBF" fontWeight={600}>
-                    {comm.category}
-                  </Typography>
-                  <Typography variant="h6" fontWeight={700} sx={{ mt: 0.5 }}>
-                    {comm.title}
-                  </Typography>
-                  <Typography variant="body2" color="text.secondary" sx={{ mt: 1, mb: 2, display: '-webkit-box', WebkitLineClamp: 2, overflow: 'hidden' }}>
-                    {comm.description}
-                  </Typography>
-                  <Typography variant="h4" fontWeight={700} color="#1A6B8A" sx={{ fontSize: '1.5rem' }}>
-                    Rp {comm.priceFrom?.toLocaleString('id-ID')}
-                  </Typography>
+                  <Typography variant="caption" color="#4A9FBF" fontWeight={600}>{comm.category}</Typography>
+                  <Typography variant="h6" fontWeight={700} sx={{ mt: 0.5 }}>{comm.title}</Typography>
+                  <Typography variant="body2" color="text.secondary" sx={{ mt: 1, mb: 2, display: '-webkit-box', WebkitLineClamp: 2, overflow: 'hidden' }}>{comm.description}</Typography>
+                  <Typography variant="h4" fontWeight={700} color="#1A6B8A" sx={{ fontSize: '1.5rem' }}>Rp {comm.priceFrom?.toLocaleString('id-ID')}</Typography>
                   <Box display="flex" gap={1} sx={{ mt: 2 }}>
-                    <Button size="small" variant="outlined" startIcon={<EditIcon />} onClick={() => handleOpenDialog(comm)} sx={{ flex: 1, borderRadius: '8px', textTransform: 'none' }}>
-                      Edit
-                    </Button>
-                    <Button size="small" variant="outlined" color="error" startIcon={<DeleteIcon />} onClick={() => handleDelete(comm.id)} sx={{ borderRadius: '8px', textTransform: 'none' }}>
-                      Delete
-                    </Button>
+                    <Button size="small" variant="outlined" startIcon={<EditIcon />} onClick={() => handleOpenDialog(comm)} sx={{ flex: 1, borderRadius: '8px', textTransform: 'none' }}>Edit</Button>
+                    <Button size="small" variant="outlined" color="error" startIcon={<DeleteIcon />} onClick={() => handleDelete(comm.id)} sx={{ borderRadius: '8px', textTransform: 'none' }}>Delete</Button>
                   </Box>
                 </CardContent>
               </Card>
@@ -393,27 +329,16 @@ const CommissionManager = () => {
         </Grid>
       )}
 
-      {/* Create/Edit Dialog */}
-      <Dialog open={openDialog} onClose={() => !loading && setOpenDialog(false)} maxWidth="md" fullWidth
-        PaperProps={{ sx: { borderRadius: '16px', maxHeight: '90vh' } }}>
-
+      {/* Dialog Create/Edit */}
+      <Dialog open={openDialog} onClose={() => !loading && setOpenDialog(false)} maxWidth="md" fullWidth PaperProps={{ sx: { borderRadius: '16px', maxHeight: '90vh' } }}>
         <DialogTitle sx={{ borderBottom: '1px solid #E2E8F0', pb: 2 }}>
-          <Typography variant="h6" fontWeight={700} color="#1A6B8A">
-            {editingCommission ? 'Edit Commission Package' : 'Create Commission Package'}
-          </Typography>
-          <IconButton onClick={() => setOpenDialog(false)} sx={{ position: 'absolute', right: 16, top: 12 }}>
-            <CloseIcon />
-          </IconButton>
+          <Typography variant="h6" fontWeight={700} color="#1A6B8A">{editingCommission ? 'Edit Commission Package' : 'Create Commission Package'}</Typography>
+          <IconButton onClick={() => setOpenDialog(false)} sx={{ position: 'absolute', right: 16, top: 12 }}><CloseIcon /></IconButton>
         </DialogTitle>
-
         <DialogContent sx={{ py: 3, overflowY: 'auto' }}>
           {loading && <LinearProgress sx={{ mb: 2, borderRadius: 2 }} />}
+          <Alert severity="info" sx={{ mb: 3, borderRadius: '8px' }}>Upload your commission package details here</Alert>
 
-          <Alert severity="info" sx={{ mb: 3, borderRadius: '8px' }}>
-            Upload your commission package details here
-          </Alert>
-
-          {/* Basic Information */}
           <Typography variant="subtitle2" fontWeight={700} color="#1A6B8A" sx={{ mb: 2 }}>Basic Information</Typography>
           <Grid container spacing={2} sx={{ mb: 4 }}>
             <Grid item xs={12} md={8}>
@@ -433,8 +358,6 @@ const CommissionManager = () => {
           </Grid>
 
           <Divider sx={{ my: 2 }} />
-
-          {/* Pricing & Timeline */}
           <Typography variant="subtitle2" fontWeight={700} color="#1A6B8A" sx={{ mb: 2 }}>Pricing & Timeline</Typography>
           <Grid container spacing={2} sx={{ mb: 4 }}>
             <Grid item xs={12} md={6}>
@@ -455,8 +378,6 @@ const CommissionManager = () => {
           </Grid>
 
           <Divider sx={{ my: 2 }} />
-
-          {/* Media Upload */}
           <Typography variant="subtitle2" fontWeight={700} color="#1A6B8A" sx={{ mb: 2 }}>Media Upload</Typography>
           <Stack spacing={3} sx={{ mb: 4 }}>
             <ImageUploadField label="Cover Image" value={formData.coverImage} onChange={(val) => setFormData({ ...formData, coverImage: val })} />
@@ -469,8 +390,6 @@ const CommissionManager = () => {
           </Stack>
 
           <Divider sx={{ my: 2 }} />
-
-          {/* What's Included */}
           <Typography variant="subtitle2" fontWeight={700} color="#1A6B8A" sx={{ mb: 2 }}>What's Included</Typography>
           <Box display="flex" gap={1} mb={2}>
             <TextField size="small" placeholder="e.g., High-res JPG/PNG" value={newInclude} onChange={(e) => setNewInclude(e.target.value)} onKeyPress={(e) => e.key === 'Enter' && handleAddInclude()} fullWidth />
@@ -481,19 +400,15 @@ const CommissionManager = () => {
           </Box>
 
           <Divider sx={{ my: 2 }} />
-
-          {/* Terms of Service */}
           <Typography variant="subtitle2" fontWeight={700} color="#1A6B8A" sx={{ mb: 2 }}>Terms of Service</Typography>
           <TextField fullWidth multiline rows={2} value={formData.terms} onChange={(e) => setFormData({ ...formData, terms: e.target.value })} placeholder="Your terms and conditions..." sx={{ mb: 4 }} />
 
-          {/* Status */}
           <Box display="flex" alignItems="center" gap={2}>
             <Typography>Package Status:</Typography>
             <Switch checked={formData.isOpen} onChange={(e) => setFormData({ ...formData, isOpen: e.target.checked })} />
             <Chip label={formData.isOpen ? 'Open' : 'Closed'} size="small" />
           </Box>
         </DialogContent>
-
         <DialogActions sx={{ p: 3, borderTop: '1px solid #E2E8F0' }}>
           <Button onClick={() => setOpenDialog(false)} color="error" variant="outlined">Cancel</Button>
           <Button onClick={handleSave} variant="contained" sx={{ bgcolor: '#4A9FBF' }} disabled={loading}>

@@ -1,50 +1,72 @@
 // src/components/artist/ArtistDashboardTab.js
-import React, { useState } from 'react';
-import { Box, Tabs, Tab } from '@mui/material';
+import React, { useState, useEffect } from 'react';
+import { Box, Tabs, Tab, Typography } from '@mui/material';
 import PortfolioManager from './PortfolioManager';
-import CommisionManager from './CommissionManager';
+import CommissionManager from './CommissionManager';
+import ShopManager from './ShopManager';
+import PaymentVerification from './PaymentVerification';
 
 export default function ArtistDashboardTab() {
   const [activeTab, setActiveTab] = useState(0);
+  const [currentUser, setCurrentUser] = useState(null);
 
-  // Fungsi render konten berdasarkan tab aktif
+  useEffect(() => {
+    const user = JSON.parse(localStorage.getItem('user'));
+    setCurrentUser(user);
+  }, []);
+
   const renderContent = () => {
     switch (activeTab) {
       case 0:
         return <PortfolioManager />;
       case 1:
-        return <CommisionManager />;
+        return <CommissionManager />;
+      case 2:
+        return <ShopManager user={currentUser} />;
       default:
         return null;
     }
   };
 
+  if (!currentUser) {
+    return (
+      <Box sx={{ textAlign: 'center', py: 8 }}>
+        <Typography>Loading...</Typography>
+      </Box>
+    );
+  }
+
   return (
     <Box sx={{ width: '100%' }}>
-      {/* TAB UTAMA: Portfolio | Commissions | Shop | Analytics */}
       <Tabs
         value={activeTab}
         onChange={(e, newValue) => setActiveTab(newValue)}
         variant="fullWidth"
         sx={{
-          borderBottom: '1px solid #E2E8F0',
+          borderBottom: '2px solid #E2E8F0',
           mb: 4,
           '& .MuiTab-root': {
             textTransform: 'none',
             fontWeight: 600,
             fontSize: '0.9rem',
-            py: 1.5,
+            py: 2,
             color: '#64748B',
-            '&.Mui-selected': { color: '#4A9FBF' },
+            '&.Mui-selected': {
+              color: '#4A9FBF',
+            },
           },
-          '& .MuiTabs-indicator': { backgroundColor: '#4A9FBF', height: 2 },
+          '& .MuiTabs-indicator': {
+            backgroundColor: '#4A9FBF',
+            height: 3,
+            borderRadius: '3px',
+          },
         }}
       >
         <Tab label="Portfolio" />
         <Tab label="Commissions" />
+        <Tab label="Payment Verification" />
       </Tabs>
 
-      {/* Konten sesuai tab */}
       {renderContent()}
     </Box>
   );

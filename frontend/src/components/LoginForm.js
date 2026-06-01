@@ -1,4 +1,4 @@
-// src/components/LoginForm.js
+// src/components/LoginForm.js - FIXED dengan redirect ADMIN
 import React, { useState } from 'react';
 import { useNavigate, Link } from 'react-router-dom';
 
@@ -49,6 +49,7 @@ function LoginForm({ setIsAuthenticated, setUser }) {
         password: ''
     });
     const [error, setError] = useState('');
+    const [loading, setLoading] = useState(false);
 
     const handleChange = (e) => {
         setFormData({
@@ -60,6 +61,8 @@ function LoginForm({ setIsAuthenticated, setUser }) {
     const handleSubmit = async (e) => {
         e.preventDefault();
         setError('');
+        setLoading(true);
+
         try {
             const response = await fetch('http://localhost:8080/api/auth/login', {
                 method: 'POST',
@@ -70,25 +73,42 @@ function LoginForm({ setIsAuthenticated, setUser }) {
             });
 
             const data = await response.json();
+            console.log('Login response:', data); // DEBUG
 
             if (response.ok) {
-                // ONLY verified artists can login as artist
-                if (data.user.role === 'artist' && data.user.isVerified !== true) {
+                const userRole = data.user.role;
+                const isVerified = data.user.isVerified;
+
+                // ONLY verified artists can login as artist (tapi ADMIN tetap bisa)
+                if (userRole === 'artist' && isVerified !== true) {
                     setError('Your artist account is pending verification. Please wait for admin approval.');
+                    setLoading(false);
                     return;
                 }
 
+                // Simpan ke localStorage
                 localStorage.setItem('token', data.token);
                 localStorage.setItem('user', JSON.stringify(data.user));
+
+                // Update state App
                 setIsAuthenticated(true);
                 setUser(data.user);
-                navigate('/');
+
+                // Redirect berdasarkan role (support 'admin' dan 'ADMIN')
+                if (userRole === 'admin' || userRole === 'ADMIN') {
+                    console.log('Redirecting to /admin...');
+                    navigate('/admin');
+                } else {
+                    navigate('/');
+                }
             } else {
                 setError(data.message || 'Invalid username or password.');
             }
         } catch (error) {
             console.error('Login error:', error);
             setError('Connection failed. Please try again later.');
+        } finally {
+            setLoading(false);
         }
     };
 
@@ -132,7 +152,7 @@ function LoginForm({ setIsAuthenticated, setUser }) {
                             fontWeight: 500,
                             textAlign: 'left'
                         }}>
-                            {error}
+                            ⚠️ {error}
                         </div>
                     )}
 
@@ -153,23 +173,26 @@ function LoginForm({ setIsAuthenticated, setUser }) {
                         placeholder="Enter your password"
                     />
 
-                    <button type="submit" style={{
-                        width: '100%',
-                        padding: '14px',
-                        borderRadius: '12px',
-                        border: 'none',
-                        backgroundColor: '#4A9FBF',
-                        color: '#FFFFFF',
-                        fontWeight: 700,
-                        fontSize: '1rem',
-                        cursor: 'pointer',
-                        marginTop: '10px',
-                        transition: 'background 0.2s'
-                    }}
-                    onMouseOver={(e) => e.target.style.backgroundColor = '#1A6B8A'}
-                    onMouseOut={(e) => e.target.style.backgroundColor = '#4A9FBF'}
+                    <button
+                        type="submit"
+                        disabled={loading}
+                        style={{
+                            width: '100%',
+                            padding: '14px',
+                            borderRadius: '12px',
+                            border: 'none',
+                            backgroundColor: loading ? '#94A3B8' : '#4A9FBF',
+                            color: '#FFFFFF',
+                            fontWeight: 700,
+                            fontSize: '1rem',
+                            cursor: loading ? 'not-allowed' : 'pointer',
+                            marginTop: '10px',
+                            transition: 'background 0.2s'
+                        }}
+                        onMouseOver={(e) => { if (!loading) e.target.style.backgroundColor = '#1A6B8A'; }}
+                        onMouseOut={(e) => { if (!loading) e.target.style.backgroundColor = '#4A9FBF'; }}
                     >
-                        Login
+                        {loading ? 'Logging in...' : 'Login'}
                     </button>
 
                     <p style={{ textAlign: 'center', marginTop: '24px', fontSize: '0.9rem', color: '#5D6D7E' }}>

@@ -1,4 +1,4 @@
-// src/components/admin/ArtistVerification.js
+// src/components/admin/ArtistVerification.js - FIXED with per-user notifications
 import React, { useState, useEffect } from 'react';
 import { Table, TableBody, TableCell, TableContainer, TableHead, TableRow, Paper, Button, Typography, Chip, Box } from '@mui/material';
 
@@ -17,20 +17,7 @@ function ArtistVerification() {
     const updated = submissions.map(sub => {
       if (sub.id === id) {
         if (newStatus === 'approved') {
-          // Create notification
-          const newNotification = {
-            id: Date.now(),
-            message: `Congratulations! Your artist application for @${sub.username} has been approved by Admin. You can now access Creator features! 🎉`,
-            type: 'ARTIST_APPROVAL',
-            isRead: false,
-            timestamp: new Date().toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit' })
-          };
-
-          const existingNotifications = JSON.parse(localStorage.getItem('user_notifications')) || [];
-          localStorage.setItem('user_notifications', JSON.stringify([newNotification, ...existingNotifications]));
-
           // UPDATE USER IN LOCALSTORAGE
-          // Find user by username in registered_users
           const allUsers = JSON.parse(localStorage.getItem('registered_users')) || [];
 
           // Update in registered_users
@@ -46,7 +33,7 @@ function ArtistVerification() {
           });
           localStorage.setItem('registered_users', JSON.stringify(updatedUsers));
 
-          // UPDATE CURRENT USER if logged in
+          // UPDATE CURRENT USER if logged in as that user
           const currentUser = JSON.parse(localStorage.getItem('user'));
           if (currentUser && currentUser.username === sub.username) {
             const updatedCurrentUser = {
@@ -55,11 +42,26 @@ function ArtistVerification() {
               role: 'artist'
             };
             localStorage.setItem('user', JSON.stringify(updatedCurrentUser));
-
-            // Trigger event to update UI
             window.dispatchEvent(new CustomEvent('userUpdated', { detail: updatedCurrentUser }));
-            window.dispatchEvent(new Event('storage'));
           }
+
+          // 🔥 PERBAIKAN: Create notification for the approved user (bukan current admin!)
+          const targetUser = allUsers.find(u => u.username === sub.username);
+          if (targetUser) {
+            const NOTIF_KEY = `user_notifications_${targetUser.id}`;
+            const existingNotifications = JSON.parse(localStorage.getItem(NOTIF_KEY) || '[]');
+            const newNotification = {
+              id: Date.now(),
+              message: `🎉 Congratulations! Your artist application for @${sub.username} has been approved! You can now access Creator features.`,
+              type: 'ARTIST_APPROVAL',
+              isRead: false,
+              timestamp: new Date().toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit' })
+            };
+            existingNotifications.unshift(newNotification);
+            localStorage.setItem(NOTIF_KEY, JSON.stringify(existingNotifications));
+          }
+
+          window.dispatchEvent(new Event('storage'));
         }
         return { ...sub, status: newStatus };
       }
