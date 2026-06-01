@@ -1,4 +1,4 @@
-// src/components/admin/ArtistVerification.js - FIXED with per-user notifications
+// src/components/admin/ArtistVerification.js
 import React, { useState, useEffect } from 'react';
 import { Table, TableBody, TableCell, TableContainer, TableHead, TableRow, Paper, Button, Typography, Chip, Box } from '@mui/material';
 
@@ -6,23 +6,71 @@ function ArtistVerification() {
   const [submissions, setSubmissions] = useState([]);
 
   useEffect(() => {
+    // TAMPILAN TETAP PAKAI DATA DARI LOCALSTORAGE DULU (Biar keliatan semua user)
     const savedSubmissions = JSON.parse(localStorage.getItem('artist_submissions')) || [
       { id: 1, name: 'Ahmad Syauqi', username: 'syauqi_art', portfolio: 'behance.net/syauqi', status: 'pending' },
       { id: 2, name: 'Caesar Ramadhan', username: 'caesar_draws', portfolio: 'artstation.com/caesar', status: 'pending' }
     ];
     setSubmissions(savedSubmissions);
+
+    // TAPI TAMBAHKAN SYNC DARI BACKEND (Biar statusnya sesuai database)
+    syncFromBackend();
   }, []);
 
-  const handleAction = (id, newStatus) => {
-    const updated = submissions.map(sub => {
-      if (sub.id === id) {
-        if (newStatus === 'approved') {
-          // UPDATE USER IN LOCALSTORAGE
+  // 🔥 TAMBAHAN: Sync status dari backend
+  const syncFromBackend = async () => {
+    try {
+      const response = await fetch('http://localhost:8080/api/admin/pending-artists');
+      const data = await response.json();
+
+      if (data.success && data.data) {
+        // Update status submissions berdasarkan data backend
+        setSubmissions(prev => {
+          const updated = prev.map(sub => {
+            const backendUser = data.data.find(u => u.username === sub.username);
+            if (backendUser) {
+              return { ...sub, status: backendUser.isVerified ? 'approved' : 'pending' };
+            }
+            return sub;
+          });
+          localStorage.setItem('artist_submissions', JSON.stringify(updated));
+          return updated;
+        });
+      }
+    } catch (error) {
+      console.error('Sync error:', error);
+    }
+  };
+
+  const handleAction = async (id, newStatus) => {
+    const currentSub = submissions.find(sub => sub.id === id);
+
+    if (newStatus === 'approved') {
+      // 🔥 CARI USER ID DARI BACKEND DULU
+      try {
+        const response = await fetch('http://localhost:8080/api/admin/pending-artists');
+        const data = await response.json();
+        const backendUser = data.data?.find(u => u.username === currentSub.username);
+        const userId = backendUser?.id;
+
+        if (!userId) {
+          alert(`User ${currentSub.username} tidak ditemukan di backend!`);
+          return;
+        }
+
+        // APPROVE KE BACKEND
+        const approveRes = await fetch(`http://localhost:8080/api/admin/approve-artist/${userId}`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' }
+        });
+        const approveData = await approveRes.json();
+
+        if (approveRes.ok && approveData.success) {
+          // LANJUTKAN LOGIC ASLI TEMANMU (UPDATE LOCALSTORAGE DLL)
           const allUsers = JSON.parse(localStorage.getItem('registered_users')) || [];
 
-          // Update in registered_users
           const updatedUsers = allUsers.map(user => {
-            if (user.username === sub.username) {
+            if (user.username === currentSub.username) {
               return {
                 ...user,
                 isVerified: true,
@@ -33,9 +81,8 @@ function ArtistVerification() {
           });
           localStorage.setItem('registered_users', JSON.stringify(updatedUsers));
 
-          // UPDATE CURRENT USER if logged in as that user
           const currentUser = JSON.parse(localStorage.getItem('user'));
-          if (currentUser && currentUser.username === sub.username) {
+          if (currentUser && currentUser.username === currentSub.username) {
             const updatedCurrentUser = {
               ...currentUser,
               isVerified: true,
@@ -45,14 +92,13 @@ function ArtistVerification() {
             window.dispatchEvent(new CustomEvent('userUpdated', { detail: updatedCurrentUser }));
           }
 
-          // 🔥 PERBAIKAN: Create notification for the approved user (bukan current admin!)
-          const targetUser = allUsers.find(u => u.username === sub.username);
+          const targetUser = allUsers.find(u => u.username === currentSub.username);
           if (targetUser) {
             const NOTIF_KEY = `user_notifications_${targetUser.id}`;
             const existingNotifications = JSON.parse(localStorage.getItem(NOTIF_KEY) || '[]');
             const newNotification = {
               id: Date.now(),
-              message: `🎉 Congratulations! Your artist application for @${sub.username} has been approved! You can now access Creator features.`,
+              message: `🎉 Congratulations! Your artist application for @${currentSub.username} has been approved! You can now access Creator features.`,
               type: 'ARTIST_APPROVAL',
               isRead: false,
               timestamp: new Date().toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit' })
@@ -62,17 +108,40 @@ function ArtistVerification() {
           }
 
           window.dispatchEvent(new Event('storage'));
-        }
-        return { ...sub, status: newStatus };
-      }
-      return sub;
-    });
 
-    setSubmissions(updated);
-    localStorage.setItem('artist_submissions', JSON.stringify(updated));
-    alert(`Application ${newStatus === 'approved' ? 'APPROVED' : 'REJECTED'} successfully!`);
+          // UPDATE STATUS DI SUBMISSIONS
+          const updated = submissions.map(sub => {
+            if (sub.id === id) {
+              return { ...sub, status: 'approved' };
+            }
+            return sub;
+          });
+          setSubmissions(updated);
+          localStorage.setItem('artist_submissions', JSON.stringify(updated));
+
+          alert(`Application APPROVED successfully!`);
+        } else {
+          alert(`Failed: ${approveData.message || 'Unknown error'}`);
+        }
+      } catch (error) {
+        console.error("Error:", error);
+        alert(`Failed to approve: ${error.message}`);
+      }
+    } else {
+      // REJECTED - PAKAI LOGIC ASLI TEMANMU
+      const updated = submissions.map(sub => {
+        if (sub.id === id) {
+          return { ...sub, status: 'rejected' };
+        }
+        return sub;
+      });
+      setSubmissions(updated);
+      localStorage.setItem('artist_submissions', JSON.stringify(updated));
+      alert(`Application REJECTED successfully!`);
+    }
   };
 
+  // TAMPILAN SAMA PERSIS DENGAN ASLINYA (TIDAK ADA YANG DIUBAH)
   return (
     <Box>
       <Typography variant="h6" sx={{ color: '#1A6B8A', fontWeight: 700, mb: 3 }}>

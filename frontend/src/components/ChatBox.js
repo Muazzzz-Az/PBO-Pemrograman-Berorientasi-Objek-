@@ -9,7 +9,16 @@ function ChatBox({ artistId, artistName, currentUser }) {
     const [chatLog, setChatLog] = useState([]);
     const messagesEndRef = useRef(null);
 
-    const roomId = currentUser ? `room_${currentUser.id}_${artistId}` : null;
+    //  1. AMBIL ID ASLI DARI DATABASE LOKAL
+    // Cari user di registered_users yang namanya cocok dengan artistName (misal: aoriinoyo5)
+    const allUsers = JSON.parse(localStorage.getItem('registered_users')) || [];
+    const targetArtist = allUsers.find(u => u.username === artistName || u.fullName === artistName);
+
+    // Jika ketemu di local storage (ID 8), pakai itu. Jika tidak, pakai artistId bawaan.
+    const validArtistId = targetArtist?.id ? targetArtist.id : artistId;
+
+    //  2. ROOM ID SEKARANG AMAN UNTUK SEMUA AKUN
+    const roomId = currentUser ? `room_${currentUser.id}_${validArtistId}` : null;
 
     useEffect(() => {
         if (!currentUser || !roomId) return;
@@ -19,8 +28,11 @@ function ChatBox({ artistId, artistName, currentUser }) {
         setChatLog(savedChat);
 
         // Koneksikan ke socket.io server
-        const token = localStorage.getItem('token');
-        socket = io('http://localhost:8080', { auth: { token } });
+        // Ganti localhost jadi 127.0.0.1
+        socket = io('http://127.0.0.1:8085', {
+            transports: ['websocket'],
+            upgrade: false
+        });
 
         socket.emit('join_room', roomId);
 
@@ -51,7 +63,7 @@ function ChatBox({ artistId, artistName, currentUser }) {
             content: message,
             senderId: currentUser.id,
             senderName: currentUser.fullName || currentUser.username,
-            receiverId: artistId,
+            receiverId: validArtistId, // Menggunakan ID yang sudah valid
             roomId: roomId,
             timestamp: new Date().toISOString(),
             isRead: false

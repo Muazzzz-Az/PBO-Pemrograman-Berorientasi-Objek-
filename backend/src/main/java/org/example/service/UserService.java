@@ -17,4 +17,7 @@ public interface UserService {
     Optional<User> getUserById(Long id);
 
     User approveArtist(Long userId);
+
+    List<User> getPendingArtists();     // Ambil semua user yang pending verifikasi
+    void rejectArtist(Long userId, String reason); // Tolak permohonan artist
 }

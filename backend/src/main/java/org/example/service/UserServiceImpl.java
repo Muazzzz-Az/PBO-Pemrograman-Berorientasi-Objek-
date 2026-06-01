@@ -74,4 +74,29 @@ public class UserServiceImpl implements UserService {
 
         return userRepository.save(user);
     }
+
+    @Override
+    public List<User> getPendingArtists() {
+        // Ambil user dengan role "user" ATAU "artist" yang belum diverifikasi
+        // (karena user yang daftar sebagai artist bisa langsung role-nya "artist" tapi isVerified false)
+        return userRepository.findByIsVerifiedFalse(); // Ambil semua user yang belum diverifikasi
+    }
+
+    @Override
+    @org.springframework.transaction.annotation.Transactional
+    public void rejectArtist(Long userId, String reason) {
+        User user = userRepository.findById(userId)
+                .orElseThrow(() -> new RuntimeException("User tidak ditemukan dengan id: " + userId));
+
+        // Biarkan role tetap "user", tapi isVerified false
+        // Dan jangan diubah jadi artist
+        user.setRole("user");  // Pastikan role tetap user
+        user.setIsVerified(false);
+
+        userRepository.save(user);
+
+        // Log penolakan untuk debugging
+        System.out.println("Artist application REJECTED for user: " + user.getUsername());
+        System.out.println("Reason: " + reason);
+    }
 }
