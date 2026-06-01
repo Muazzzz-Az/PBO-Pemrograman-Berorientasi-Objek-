@@ -1,4 +1,4 @@
-// HomePage.js - Unified Feed with Filters (FIXED)
+// HomePage.js - Unified Feed with Filters (FIXED GRID LAYOUT)
 import React, { useState, useEffect } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import {
@@ -184,16 +184,22 @@ const ServiceCategories = () => {
       <Typography variant="h4" fontWeight={800} sx={{ mb: 5, color: '#1A6B8A', textAlign: 'center' }}>
         Commission Services
       </Typography>
-      <Grid container spacing={3}>
+      
+      {/* FIX: CSS Grid Terstruktur 2 Dimensi untuk ukuran dan baris yang presisi absolut */}
+      <Box sx={{ 
+        display: 'grid', 
+        gridTemplateColumns: { xs: 'repeat(2, 1fr)', sm: 'repeat(3, 1fr)', md: 'repeat(4, 1fr)' }, 
+        gap: 3 
+      }}>
         {serviceCategories.map((service, idx) => (
-          <Grid item xs={6} sm={4} md={3} key={idx}>
-            <motion.div whileHover={{ y: -6 }} transition={{ duration: 0.2 }}>
+          <Box key={idx}>
+            <motion.div whileHover={{ y: -6 }} transition={{ duration: 0.2 }} style={{ height: '100%' }}>
               <Card
                 onClick={() => handleCategoryClick(service.title)}
                 sx={{
                   background: service.gradient,
                   p: 3.5,
-                  height: '130px',
+                  height: '140px', /* Dimensi Dikunci Kaku */
                   borderRadius: '20px',
                   cursor: 'pointer',
                   display: 'flex',
@@ -213,14 +219,14 @@ const ServiceCategories = () => {
                 <Box sx={{ color: service.color, fontSize: 42, mb: 1.5 }}>
                   {service.icon}
                 </Box>
-                <Typography variant="subtitle1" fontWeight={700} sx={{ color: service.color }}>
+                <Typography variant="subtitle1" fontWeight={700} sx={{ color: service.color, lineHeight: 1.2 }}>
                   {service.title}
                 </Typography>
               </Card>
             </motion.div>
-          </Grid>
+          </Box>
         ))}
-      </Grid>
+      </Box>
     </Container>
   );
 };
