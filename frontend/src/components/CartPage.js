@@ -10,8 +10,8 @@ import AddIcon from '@mui/icons-material/Add';
 import RemoveIcon from '@mui/icons-material/Remove';
 import ShoppingCartIcon from '@mui/icons-material/ShoppingCart';
 import { cartService } from '../services/RealTimeDataService';
-// FIX 1: Import PaymentService untuk injeksi transaksi
-import { createTransaction } from '../services/PaymentService'; 
+// FIX 1: Import fungsi yang BENAR dari PaymentService
+import { saveTransaction, generatePaymentCode } from '../services/PaymentService'; 
 
 function CartPage() {
   const navigate = useNavigate();
@@ -45,33 +45,36 @@ function CartPage() {
     loadCart();
   };
 
-  // FIX 2: Engine Checkout Sungguhan
+  // FIX 2: Engine Checkout yang disesuaikan dengan arsitektur PaymentService
   const handleCheckout = () => {
     try {
       if (cartItems.length === 0) return;
 
-      // Loop semua barang di keranjang dan ubah menjadi Transaksi
+      // Loop semua barang di keranjang dan simpan sebagai Transaksi
       cartItems.forEach(item => {
         const transactionData = {
+          id: Date.now() + Math.random().toString().substring(2, 6), // Generate ID Unik
+          transactionCode: generatePaymentCode(), // Generate Nomor Resi
           userId: currentUser.id,
           userName: currentUser.fullName || currentUser.username,
           productId: item.commissionId || item.id,
           productTitle: item.title,
-          productPrice: item.price * item.quantity, // Harga x Jumlah
+          productPrice: item.price * item.quantity, 
           artistId: item.artistId || null,
           artistName: item.artistName,
           quantity: item.quantity,
-          productFile: item.productFile || null // Jika ada file digital
+          status: 'waiting_payment', // Status Default Belum Bayar
+          createdAt: new Date().toISOString(),
+          productFile: item.productFile || null 
         };
 
-        // Lempar ke PaymentService buatan Nailah/Bila
-        createTransaction(transactionData);
+        // Simpan menggunakan fungsi asli buatan tim Anda
+        saveTransaction(transactionData);
       });
 
-      // Bersihkan keranjang setelah checkout sukses
+      // Bersihkan keranjang
       cartService.clearCart(currentUser.id);
       
-      // Lempar user ke halaman riwayat pembelian (Tab 1: Pending Payment)
       alert("Checkout Successful! Redirecting to your purchases...");
       navigate('/my-purchases');
       
