@@ -37,3 +37,8 @@ build/
 
 ### Mac OS ###
 .DS_Store
+
+# Block H2 Local Database Leaks
+data/*.db
+data/*.mv.db
+data/*.trace.db
