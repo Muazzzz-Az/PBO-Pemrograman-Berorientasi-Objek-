@@ -15,4 +15,6 @@ public interface UserService {
 
     List<User> getAllUsers();
     Optional<User> getUserById(Long id);
+
+    User approveArtist(Long userId);
 }

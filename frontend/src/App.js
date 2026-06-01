@@ -87,6 +87,21 @@ const pastelOceanTheme = createTheme({
   },
 });
 
+// =============================================
+// KOMPONEN UNTUK PROTECT ROUTE KHUSUS ARTIST
+// =============================================
+const ArtistRoute = ({ children, isAuthenticated, user }) => {
+  // 1. Cek apakah sudah login
+  if (!isAuthenticated) {
+    return <Navigate to="/login" replace />;
+  }
+  // 2. Cek apakah role-nya beneran artist
+  if (user?.role !== 'artist') {
+    return <Navigate to="/" replace />; // Tendang ke home kalau user biasa coba-coba masuk
+  }
+  return children;
+};
+
 function App() {
   // ========== HAPUS SEMUA AUTO LOGIN ==========
   // State awal: selalu false (belum login)
@@ -203,6 +218,15 @@ function App() {
               <PrivateRoute isAuthenticated={isAuthenticated}>
                 <ProfilePage user={user} setUser={handleUpdateUser} />
               </PrivateRoute>
+            }
+          />
+
+          <Route
+            path="/creator-dashboard"
+            element={
+                <ArtistRoute isAuthenticated={isAuthenticated} user={user}>
+
+                </ArtistRoute>
             }
           />
 

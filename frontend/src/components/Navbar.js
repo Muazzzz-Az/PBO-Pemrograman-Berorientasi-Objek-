@@ -1,6 +1,7 @@
 // src/components/Navbar.js - Enhanced Version with Per-User Notifications
 import React, { useState, useEffect } from 'react';
 import { Link, useNavigate, useLocation } from 'react-router-dom';
+import UserNotifications from './UserNotifications';
 import {
   AppBar,
   Toolbar,
@@ -37,6 +38,10 @@ import ShoppingCartIcon from '@mui/icons-material/ShoppingCart';
 import BrushIcon from '@mui/icons-material/Brush';
 import { styled, alpha } from '@mui/material/styles';
 import { cartService } from '../services/RealTimeDataService';
+import Dialog from '@mui/material/Dialog';
+import DialogTitle from '@mui/material/DialogTitle';
+import DialogContent from '@mui/material/DialogContent';
+import DialogActions from '@mui/material/DialogActions';
 
 // Styled Components dengan animasi lebih halus
 const StyledAppBar = styled(AppBar)(({ theme }) => ({
@@ -176,6 +181,7 @@ function Navbar({ isAuthenticated, user, setIsAuthenticated, setUser }) {
   const [unreadCount, setUnreadCount] = useState(0);
   const [cartCount, setCartCount] = useState(0);
   const [scrolled, setScrolled] = useState(false);
+  const [openReLogin, setOpenReLogin] = useState(false);
 
   const theme = useTheme();
   const isMobile = useMediaQuery(theme.breakpoints.down('lg'));
@@ -458,12 +464,18 @@ function Navbar({ isAuthenticated, user, setIsAuthenticated, setUser }) {
                     {notifications.map((notif, index) => (
                       <MenuItemStyled
                         key={notif.id}
-                        onClick={() => handleMarkAsRead(notif.id)}
+                        onClick={() => {
+                          handleMarkAsRead(notif.id);
+                          if (notif.type === 'ARTIST_APPROVAL') {
+                            setOpenReLogin(true);
+                          }
+                        }}
                         sx={{
                           backgroundColor: notif.isRead ? 'transparent' : alpha('#4A9FBF', 0.04),
                           borderBottom: index !== notifications.length - 1 ? '1px solid rgba(74, 159, 191, 0.05)' : 'none',
                         }}
                       >
+                        {/* Bagian dalam MenuItem (Box, Typography, dll) milik temanmu tetap di sini */}
                         <Box sx={{ flex: 1 }}>
                           <Typography variant="body2" sx={{ fontWeight: notif.isRead ? 500 : 700, color: '#2C3E50', mb: 0.5 }}>
                             {notif.type === 'ARTIST_APPROVAL' ? '🎉 Artist Verification' : '📢 Notification'}
@@ -542,16 +554,21 @@ function Navbar({ isAuthenticated, user, setIsAuthenticated, setUser }) {
                         <ShoppingCartIcon sx={{ fontSize: 20, color: '#4A9FBF' }} />
                         Cart {cartCount > 0 && `(${cartCount})`}
                       </MenuItemStyled>
-                      <MenuItemStyled component={Link} to="/my-commissions" onClick={handleMenuClose}>
-                        <BrushIcon sx={{ fontSize: 20, color: '#4A9FBF' }} />
-                        My Commissions
-                      </MenuItemStyled>
+
                       <MenuItem component={Link} to="/my-purchases" onClick={handleMenuClose}>
                         My Purchases
                       </MenuItem>
 
-                      {/* Creator Dashboard - hanya untuk artist terverifikasi */}
-                      {user?.isVerified === true && (
+                      {/* 🔥 PERBAIKAN 1: Sembunyikan My Commissions dari User Biasa */}
+                      {user?.role === 'ARTIST' && (
+                        <MenuItemStyled component={Link} to="/my-commissions" onClick={handleMenuClose}>
+                          <BrushIcon sx={{ fontSize: 20, color: '#4A9FBF' }} />
+                          My Commissions
+                        </MenuItemStyled>
+                      )}
+
+                      {/* 🔥 PERBAIKAN 2: Creator Dashboard hanya untuk akun yang beneran ARTIST dan Verified */}
+                      {user?.role === 'ARTIST' && user?.isVerified === true && (
                         <MenuItemStyled component={Link} to="/profile?tab=creator" onClick={handleMenuClose}>
                           <DashboardIcon sx={{ fontSize: 20, color: '#4A9FBF' }} />
                           Creator Dashboard
@@ -732,6 +749,31 @@ function Navbar({ isAuthenticated, user, setIsAuthenticated, setUser }) {
           }
         }
       `}</style>
+
+      {/* POPUP LOGIN ULANG */}
+      <Dialog
+        open={openReLogin}
+        onClose={() => setOpenReLogin(false)}
+        PaperProps={{ sx: { borderRadius: '20px', p: 1 } }}
+      >
+        <DialogTitle sx={{ fontWeight: 800, color: '#1A6B8A', textAlign: 'center' }}>
+          Congratulations on becoming an artist! 🎨
+        </DialogTitle>
+        <DialogContent>
+          <Typography textAlign="center" color="textSecondary">
+            Your account has been verified. Please login again to activate your Artist features!
+          </Typography>
+        </DialogContent>
+        <DialogActions sx={{ justifyContent: 'center', pb: 3 }}>
+          <Button
+            variant="contained"
+            onClick={handleLogout}
+            sx={{ borderRadius: '30px', px: 4, bgcolor: '#4A9FBF' }}
+          >
+            Re-Login Now
+          </Button>
+        </DialogActions>
+      </Dialog>
     </StyledAppBar>
   );
 }

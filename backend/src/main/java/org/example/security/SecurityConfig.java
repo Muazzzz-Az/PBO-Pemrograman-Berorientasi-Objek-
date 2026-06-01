@@ -34,6 +34,7 @@ public class SecurityConfig {
                 .requestMatchers("/api/chat/**").permitAll()
                 .requestMatchers("/ws/**").permitAll()
                 .requestMatchers("/h2-console/**").permitAll()
+                .requestMatchers("/uploads/**").permitAll()
                 // Semua endpoint lain boleh diakses (untuk development)
                 .anyRequest().permitAll()
             )

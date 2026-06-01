@@ -62,4 +62,16 @@ public class UserServiceImpl implements UserService {
         // Menepati janji untuk mencari user berdasarkan ID
         return userRepository.findById(id);
     }
+
+    @Override
+    @org.springframework.transaction.annotation.Transactional
+    public User approveArtist(Long userId) {
+        User user = userRepository.findById(userId)
+                .orElseThrow(() -> new RuntimeException("User tidak ditemukan"));
+
+        user.setRole("artist");
+        user.setIsVerified(true);
+
+        return userRepository.save(user);
+    }
 }
