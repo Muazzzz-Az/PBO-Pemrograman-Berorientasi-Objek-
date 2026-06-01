@@ -4,6 +4,7 @@ import org.example.repository.UserRepository;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
 import java.util.Optional;
+import java.util.List;
 
 @Service
 public class UserServiceImpl implements UserService {
@@ -48,5 +49,17 @@ public class UserServiceImpl implements UserService {
             if (updatedUser.getRole() != null) existing.setRole(updatedUser.getRole());
             return userRepository.save(existing);
         }).orElseThrow(() -> new RuntimeException("User tidak ditemukan dengan id: " + id));
+    }
+
+    @Override
+    public List<User> getAllUsers() {
+        // Menepati janji untuk mengambil semua data user dari repository
+        return userRepository.findAll();
+    }
+
+    @Override
+    public Optional<User> getUserById(Long id) {
+        // Menepati janji untuk mencari user berdasarkan ID
+        return userRepository.findById(id);
     }
 }

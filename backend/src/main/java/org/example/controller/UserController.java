@@ -5,6 +5,7 @@ import org.example.service.UserService;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 import java.util.HashMap;
+import java.util.List;
 import java.util.Map;
 
 @RestController
@@ -21,14 +22,14 @@ public class UserController {
     // GET user by ID
     @GetMapping("/{id}")
     public ResponseEntity<?> getUserById(@PathVariable Long id) {
-        return userService.findByUsername("") // placeholder
-            .map(u -> ResponseEntity.ok((Object) u))
-            .orElse(ResponseEntity.notFound().build());
+        return userService.getUserById(id) // Pakai getUserById, jangan findByUsername("")
+                .map(u -> ResponseEntity.ok((Object) u))
+                .orElse(ResponseEntity.notFound().build());
     }
 
-    @GetMapping("/api/users/all")
+    @GetMapping("/all") // Path dirapikan jadi /api/users/all
     public ResponseEntity<List<User>> getAllUsers() {
-        return ResponseEntity.ok(userRepository.findAll());
+        return ResponseEntity.ok(userService.getAllUsers()); // Pakai userService!
     }
 
     // PUT update profile user — dipanggil saat user save profile
