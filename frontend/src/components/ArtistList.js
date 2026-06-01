@@ -87,6 +87,8 @@ function ArtistList() {
 
         return {
           id: comm.id,
+          // FIX 1: Tangkap ID spesifik milik Artist, bukan ID Commission!
+          artistId: comm.artistId || artistData.id, 
           title: comm.title || 'Commission Package',
           artistName: artistData.name,
           artistUsername: artistData.username,
@@ -267,9 +269,10 @@ function ArtistList() {
             <Grid container spacing={3}>
               {paginatedItems.map((item) => (
                 <Grid item xs={12} sm={6} md={3} key={item.id}>
+                  {/* FIX 2: Ubah routing ke /artist/${item.artistId} */}
                   <Card
                     component={Link}
-                    to={`/artists/${item.id}`}
+                    to={`/artist/${item.artistId}`}
                     sx={{
                       textDecoration: 'none',
                       bgcolor: '#FFFFFF',
@@ -348,9 +351,10 @@ function ArtistList() {
 
                     <Divider />
                     <Box sx={{ p: 1.5 }}>
+                      {/* FIX 3: Pastikan tombol ini juga mengarah ke rute /artist yang baru */}
                       <Button
                         component={Link}
-                        to={`/artists/${item.id}`}
+                        to={`/artist/${item.artistId}`}
                         fullWidth
                         size="small"
                         variant="outlined"
