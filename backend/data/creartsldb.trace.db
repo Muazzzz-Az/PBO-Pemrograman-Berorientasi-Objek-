@@ -1,0 +1,111 @@
+2026-06-01 21:10:17.762773+07:00 jdbc[13]: exception
+org.h2.jdbc.JdbcSQLSyntaxErrorException: Syntax error in SQL statement "[*]ID"; expected "INSERT"; SQL statement:
+ID [42001-224]
+2026-06-01 21:11:03.544595+07:00 jdbc[13]: exception
+org.h2.jdbc.JdbcSQLSyntaxErrorException: Syntax error in SQL statement "SELECT * [*]IS_VERIFIED"; SQL statement:
+SELECT * IS_VERIFIED [42000-224]
+2026-06-01 21:11:24.113510+07:00 jdbc[14]: exception
+org.h2.jdbc.JdbcSQLSyntaxErrorException: Syntax error in SQL statement "[*]ID"; expected "INSERT"; SQL statement:
+ID [42001-224]
+2026-06-01 21:11:24.953837+07:00 jdbc[14]: exception
+org.h2.jdbc.JdbcSQLSyntaxErrorException: Syntax error in SQL statement "[*]ID"; expected "INSERT"; SQL statement:
+ID [42001-224]
+2026-06-01 21:11:25.569447+07:00 jdbc[14]: exception
+org.h2.jdbc.JdbcSQLSyntaxErrorException: Syntax error in SQL statement "[*]ID"; expected "INSERT"; SQL statement:
+ID [42001-224]
+2026-06-01 21:13:55.414855+07:00 jdbc[14]: exception
+org.h2.jdbc.JdbcSQLSyntaxErrorException: Table "ID" not found; SQL statement:
+SELECT * FROM ID [42102-224]
+2026-06-01 21:14:22.709521+07:00 jdbc[14]: exception
+org.h2.jdbc.JdbcSQLSyntaxErrorException: Table "ID" not found; SQL statement:
+SELECT * FROM ID [42102-224]
+2026-06-01 21:14:24.438834+07:00 jdbc[14]: exception
+org.h2.jdbc.JdbcSQLSyntaxErrorException: Table "ID" not found; SQL statement:
+SELECT * FROM ID [42102-224]
+2026-06-01 21:14:24.587827+07:00 jdbc[14]: exception
+org.h2.jdbc.JdbcSQLSyntaxErrorException: Table "ID" not found; SQL statement:
+SELECT * FROM ID [42102-224]
+2026-06-01 21:14:24.734463+07:00 jdbc[14]: exception
+org.h2.jdbc.JdbcSQLSyntaxErrorException: Table "ID" not found; SQL statement:
+SELECT * FROM ID [42102-224]
+2026-06-01 21:14:24.866195+07:00 jdbc[14]: exception
+org.h2.jdbc.JdbcSQLSyntaxErrorException: Table "ID" not found; SQL statement:
+SELECT * FROM ID [42102-224]
+2026-06-01 21:14:25.063186+07:00 jdbc[14]: exception
+org.h2.jdbc.JdbcSQLSyntaxErrorException: Table "ID" not found; SQL statement:
+SELECT * FROM ID [42102-224]
+2026-06-01 21:14:25.246671+07:00 jdbc[14]: exception
+org.h2.jdbc.JdbcSQLSyntaxErrorException: Table "ID" not found; SQL statement:
+SELECT * FROM ID [42102-224]
+2026-06-01 21:14:25.384665+07:00 jdbc[14]: exception
+org.h2.jdbc.JdbcSQLSyntaxErrorException: Table "ID" not found; SQL statement:
+SELECT * FROM ID [42102-224]
+2026-06-01 21:14:25.534262+07:00 jdbc[14]: exception
+org.h2.jdbc.JdbcSQLSyntaxErrorException: Table "ID" not found; SQL statement:
+SELECT * FROM ID [42102-224]
+2026-06-01 21:14:25.682244+07:00 jdbc[14]: exception
+org.h2.jdbc.JdbcSQLSyntaxErrorException: Table "ID" not found; SQL statement:
+SELECT * FROM ID [42102-224]
+2026-06-01 21:14:26.053493+07:00 jdbc[14]: exception
+org.h2.jdbc.JdbcSQLSyntaxErrorException: Table "ID" not found; SQL statement:
+SELECT * FROM ID [42102-224]
+2026-06-01 21:14:26.244690+07:00 jdbc[14]: exception
+org.h2.jdbc.JdbcSQLSyntaxErrorException: Table "ID" not found; SQL statement:
+SELECT * FROM ID [42102-224]
+2026-06-01 21:14:26.549059+07:00 jdbc[14]: exception
+org.h2.jdbc.JdbcSQLSyntaxErrorException: Table "ID" not found; SQL statement:
+SELECT * FROM ID [42102-224]
+2026-06-01 21:17:19.469777+07:00 jdbc[14]: exception
+org.h2.jdbc.JdbcSQLSyntaxErrorException: Table "ID" not found; SQL statement:
+SELECT * FROM ID [42102-224]
+2026-06-01 21:17:20.103714+07:00 jdbc[14]: exception
+org.h2.jdbc.JdbcSQLSyntaxErrorException: Table "ID" not found; SQL statement:
+SELECT * FROM ID [42102-224]
+2026-06-01 21:17:20.229629+07:00 jdbc[14]: exception
+org.h2.jdbc.JdbcSQLSyntaxErrorException: Table "ID" not found; SQL statement:
+SELECT * FROM ID [42102-224]
+2026-06-01 21:17:20.364893+07:00 jdbc[14]: exception
+org.h2.jdbc.JdbcSQLSyntaxErrorException: Table "ID" not found; SQL statement:
+SELECT * FROM ID [42102-224]
+2026-06-01 21:17:20.504328+07:00 jdbc[14]: exception
+org.h2.jdbc.JdbcSQLSyntaxErrorException: Table "ID" not found; SQL statement:
+SELECT * FROM ID [42102-224]
+2026-06-01 21:17:20.594522+07:00 jdbc[14]: exception
+org.h2.jdbc.JdbcSQLSyntaxErrorException: Table "ID" not found; SQL statement:
+SELECT * FROM ID [42102-224]
+2026-06-01 21:17:20.726772+07:00 jdbc[14]: exception
+org.h2.jdbc.JdbcSQLSyntaxErrorException: Table "ID" not found; SQL statement:
+SELECT * FROM ID [42102-224]
+2026-06-01 21:17:21.250201+07:00 jdbc[14]: exception
+org.h2.jdbc.JdbcSQLSyntaxErrorException: Table "ID" not found; SQL statement:
+SELECT * FROM ID [42102-224]
+2026-06-01 21:17:21.411948+07:00 jdbc[14]: exception
+org.h2.jdbc.JdbcSQLSyntaxErrorException: Table "ID" not found; SQL statement:
+SELECT * FROM ID [42102-224]
+2026-06-01 21:17:21.546316+07:00 jdbc[14]: exception
+org.h2.jdbc.JdbcSQLSyntaxErrorException: Table "ID" not found; SQL statement:
+SELECT * FROM ID [42102-224]
+2026-06-01 21:17:21.666849+07:00 jdbc[14]: exception
+org.h2.jdbc.JdbcSQLSyntaxErrorException: Table "ID" not found; SQL statement:
+SELECT * FROM ID [42102-224]
+2026-06-01 21:17:21.813096+07:00 jdbc[14]: exception
+org.h2.jdbc.JdbcSQLSyntaxErrorException: Table "ID" not found; SQL statement:
+SELECT * FROM ID [42102-224]
+2026-06-01 21:17:22.009505+07:00 jdbc[14]: exception
+org.h2.jdbc.JdbcSQLSyntaxErrorException: Table "ID" not found; SQL statement:
+SELECT * FROM ID [42102-224]
+2026-06-01 21:17:28.865676+07:00 jdbc[14]: exception
+org.h2.jdbc.JdbcSQLSyntaxErrorException: Table "ID" not found; SQL statement:
+SELECT * FROM ID [42102-224]
+2026-06-01 21:17:29.403769+07:00 jdbc[14]: exception
+org.h2.jdbc.JdbcSQLSyntaxErrorException: Table "ID" not found; SQL statement:
+SELECT * FROM ID [42102-224]
+2026-06-01 21:17:29.551807+07:00 jdbc[14]: exception
+org.h2.jdbc.JdbcSQLSyntaxErrorException: Table "ID" not found; SQL statement:
+SELECT * FROM ID [42102-224]
+2026-06-01 21:17:29.687227+07:00 jdbc[14]: exception
+org.h2.jdbc.JdbcSQLSyntaxErrorException: Table "ID" not found; SQL statement:
+SELECT * FROM ID [42102-224]
+2026-06-01 21:17:29.813342+07:00 jdbc[14]: exception
+org.h2.jdbc.JdbcSQLSyntaxErrorException: Table "ID" not found; SQL statement:
+SELECT * FROM ID [42102-224]

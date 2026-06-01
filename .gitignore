@@ -42,3 +42,6 @@ build/
 data/*.db
 data/*.mv.db
 data/*.trace.db
+
+# Block IDE Configs
+**/.idea/
