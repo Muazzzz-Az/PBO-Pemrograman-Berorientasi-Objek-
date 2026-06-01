@@ -36,6 +36,16 @@ function RealTimeChatBox({ artistId, artistName, currentUser, commissionId }) {
       setIsConnected(chatService.isConnected);
     }, 1000);
 
+    // Pastikan chatService.socket tersedia
+        if (chatService.socket) {
+          chatService.socket.on("user_online", (dataRoomId) => {
+            if (dataRoomId === roomId) {
+              console.log("Lawan bicara online!");
+              setIsConnected(true); // Update status UI
+            }
+          });
+        }
+
     const savedChat = JSON.parse(localStorage.getItem(`chat_${roomId}`) || '[]');
     setChatLog(savedChat);
 
@@ -58,16 +68,35 @@ function RealTimeChatBox({ artistId, artistName, currentUser, commissionId }) {
     });
 
     return () => {
-      clearInterval(checkConnection);
-      if (chatService.leaveRoom) {
-        chatService.leaveRoom(roomId);
-      }
-    };
-  }, [currentUser, roomId]);
+          clearInterval(checkConnection);
+          // PENTING: Bersihkan listener saat komponen di-unmount agar tidak double
+          if (chatService.socket) {
+            chatService.socket.off("user_online");
+          }
+          if (chatService.leaveRoom) {
+            chatService.leaveRoom(roomId);
+          }
+        };
+      }, [currentUser, roomId]);
 
   useEffect(() => {
     messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
   }, [chatLog]);
+
+  useEffect(() => {
+      if (roomId) {
+          // Fetch ke Controller Java yang sudah kamu buat
+          fetch(`http://localhost:8080/api/chat/room/${roomId}`)
+              .then(res => res.json())
+              .then(data => {
+                  // Update chatLog dengan data dari MySQL
+                  setChatLog(data);
+                  // Simpan ke localStorage biar tidak perlu fetch terus-menerus
+                  localStorage.setItem(`chat_${roomId}`, JSON.stringify(data));
+              })
+              .catch(err => console.error("Gagal tarik chat dari MySQL:", err));
+      }
+  }, [roomId]); // Akan jalan otomatis saat roomId terbentuk
 
   const handleTyping = (e) => {
     setMessage(e.target.value);
@@ -149,6 +178,7 @@ function RealTimeChatBox({ artistId, artistName, currentUser, commissionId }) {
         </Box>
         {!isConnected && <CircularProgress size={16} sx={{ color: '#FFFFFF' }} />}
       </Box>
+
 
       <Box sx={{ flex: 1, overflowY: 'auto', p: 2, bgcolor: '#F8FAFC' }}>
         {chatLog.length === 0 ? (

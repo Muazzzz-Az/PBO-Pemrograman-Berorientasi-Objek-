@@ -15,10 +15,19 @@ public class SocketEventHandler {
         this.server = server;
         this.chatMessageService = chatMessageService;
 
+        this.server.addConnectListener(client -> {
+            System.out.println("🔗 Client Terhubung: " + client.getSessionId());
+        });
+
+        this.server.addDisconnectListener(client -> {
+            System.out.println("❌ Client Terputus: " + client.getSessionId());
+        });
+
         // Listener ketika user masuk ke room chat
         this.server.addEventListener("join_chat", String.class, (client, roomId, ackSender) -> {
             client.joinRoom(roomId);
-            System.out.println("✅ User " + client.getSessionId() + " masuk ke: " + roomId);
+            // Kirim sinyal ke SEMUA orang di room itu bahwa seseorang baru saja online
+            this.server.getRoomOperations(roomId).sendEvent("user_online", roomId);
         });
 
         // Listener utama pengiriman pesan

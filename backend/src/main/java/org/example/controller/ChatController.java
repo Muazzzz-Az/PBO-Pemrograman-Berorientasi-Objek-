@@ -1,4 +1,5 @@
 package org.example.controller;
+
 import org.example.entity.ChatMessage;
 import org.example.service.ChatMessageService;
 import org.springframework.http.ResponseEntity;
@@ -7,11 +8,12 @@ import java.util.List;
 
 @RestController
 @RequestMapping("/api/chat")
-@CrossOrigin(origins = "http://localhost:3000")
+@CrossOrigin(origins = "http://localhost:3000") // Pastikan port React sesuai
 public class ChatController {
 
     private final ChatMessageService chatMessageService;
 
+    // Dependency Injection
     public ChatController(ChatMessageService chatMessageService) {
         this.chatMessageService = chatMessageService;
     }

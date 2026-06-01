@@ -10,7 +10,7 @@ class ChatService {
   }
 
   connect() {
-    if (this.socket) return;
+    if (this.socket && this.socket.connected) return;
 
     // WAJIB PORT 8085 agar menyambung ke mesin SocketIO di Java
     this.socket = io('http://localhost:8085', {
