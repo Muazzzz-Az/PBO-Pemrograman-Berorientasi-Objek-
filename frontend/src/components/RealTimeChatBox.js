@@ -2,7 +2,7 @@ import React, { useState, useEffect, useRef } from 'react';
 import { chatService } from '../services/ChatService';
 import {
   Box, TextField, Button, Typography, Paper, Avatar,
-  IconButton, Badge, CircularProgress, Divider
+  Badge, CircularProgress, Divider
 } from '@mui/material';
 import SendIcon from '@mui/icons-material/Send';
 
@@ -11,45 +11,34 @@ function RealTimeChatBox({ artistId, artistName, currentUser, commissionId }) {
   const [chatLog, setChatLog] = useState([]);
   const [isTyping, setIsTyping] = useState(false);
   const [typingUser, setTypingUser] = useState('');
-  const [onlineStatus, setOnlineStatus] = useState(false);
   const [isConnected, setIsConnected] = useState(false);
   const messagesEndRef = useRef(null);
   const typingTimeoutRef = useRef(null);
 
-  // --- 1. DEKLARASIKAN DULU targetArtist DI SINI ---
+  // Mengambil data artist untuk sinkronisasi ID
   const allUsers = JSON.parse(localStorage.getItem('registered_users') || '[]');
   const targetArtist = allUsers.find(u => u.username === artistName || u.fullName === artistName);
 
-  // --- 2. BARU GUNAKAN targetArtist DI BAWAHNYA ---
   const validArtistId = targetArtist?.id ? Number(targetArtist.id) : Number(artistId);
   const validCurrentUserId = Number(currentUser?.id);
 
-  // Validasi ID untuk debugging
-  if (!validArtistId || !validCurrentUserId) {
-      console.warn("ID User atau Artist tidak ditemukan di database lokal.", { validArtistId, validCurrentUserId });
-  }
-
-  // Room ID dibuat setelah ID tervalidasi
   const roomId = (validCurrentUserId && validArtistId)
     ? `room_${Math.min(validCurrentUserId, validArtistId)}_${Math.max(validCurrentUserId, validArtistId)}`
     : null;
 
   useEffect(() => {
-      if (!currentUser || !roomId) return;
+    if (!currentUser || !roomId) return;
 
-      chatService.connect();
-      chatService.joinRoom(roomId);
+    chatService.connect();
+    chatService.joinRoom(roomId);
 
-    // Sinkronisasi status koneksi ke UI
     const checkConnection = setInterval(() => {
       setIsConnected(chatService.isConnected);
     }, 1000);
 
-    // Ambil riwayat chat lokal
     const savedChat = JSON.parse(localStorage.getItem(`chat_${roomId}`) || '[]');
     setChatLog(savedChat);
 
-    // Listener pesan masuk
     chatService.onMessage((data) => {
       if (data.roomId === roomId) {
         setChatLog(prev => {
@@ -69,13 +58,12 @@ function RealTimeChatBox({ artistId, artistName, currentUser, commissionId }) {
     });
 
     return () => {
-          clearInterval(checkConnection);
-          // Pastikan fungsi ini ada di ChatService.js sebelum di-save
-          if (chatService.leaveRoom) {
-            chatService.leaveRoom(roomId);
-          }
-        };
-      }, [currentUser, roomId]);
+      clearInterval(checkConnection);
+      if (chatService.leaveRoom) {
+        chatService.leaveRoom(roomId);
+      }
+    };
+  }, [currentUser, roomId]);
 
   useEffect(() => {
     messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
@@ -83,20 +71,22 @@ function RealTimeChatBox({ artistId, artistName, currentUser, commissionId }) {
 
   const handleTyping = (e) => {
     setMessage(e.target.value);
-    if (!isTyping && roomId) {
+    if (!isTyping && roomId && isConnected) {
       setIsTyping(true);
       chatService.sendTyping(roomId, true, currentUser?.fullName || currentUser?.username);
     }
     clearTimeout(typingTimeoutRef.current);
     typingTimeoutRef.current = setTimeout(() => {
       setIsTyping(false);
-      chatService.sendTyping(roomId, false, currentUser?.fullName || currentUser?.username);
+      if (isConnected) {
+        chatService.sendTyping(roomId, false, currentUser?.fullName || currentUser?.username);
+      }
     }, 1000);
   };
 
-  const handleSendMessage = (e) => {
+  const handleSendMessage = async (e) => {
     e.preventDefault();
-    if (message.trim() === '' || !isConnected) return;
+    if (message.trim() === '') return;
 
     const tempMessage = {
       id: Date.now(),
@@ -110,16 +100,27 @@ function RealTimeChatBox({ artistId, artistName, currentUser, commissionId }) {
       isRead: false
     };
 
-    // Kirim ke Java
-    chatService.sendMessage(tempMessage);
-
-    // Update UI Lokal
+    // 1. Update UI & Local Storage segera agar user tidak menunggu
     const newChatLog = [...chatLog, tempMessage];
     setChatLog(newChatLog);
     localStorage.setItem(`chat_${roomId}`, JSON.stringify(newChatLog));
-
     setMessage('');
-    setIsTyping(false);
+
+    // 2. Kirim via Socket jika terhubung
+    if (isConnected) {
+      chatService.sendMessage(tempMessage);
+    }
+
+    // 3. Fallback: Simpan ke Database via REST API agar pesan tersimpan permanen
+    try {
+      await fetch('http://localhost:8080/api/chat', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(tempMessage)
+      });
+    } catch (err) {
+      console.error("Gagal menyimpan pesan ke database:", err);
+    }
   };
 
   if (!currentUser) {
@@ -139,12 +140,14 @@ function RealTimeChatBox({ artistId, artistName, currentUser, commissionId }) {
           <Box>
             <Typography variant="subtitle1" sx={{ fontWeight: 700 }}>{artistName}</Typography>
             <Box display="flex" alignItems="center" gap={1}>
-              <Badge color={isConnected ? "success" : "error"} variant="dot" />
-              <Typography variant="caption" sx={{ opacity: 0.9 }}>{isConnected ? 'Connected' : 'Connecting...'}</Typography>
+              <Badge color={isConnected ? "success" : "warning"} variant="dot" />
+              <Typography variant="caption" sx={{ opacity: 0.9 }}>
+                {isConnected ? 'Live' : 'Offline Mode (Saved to DB)'}
+              </Typography>
             </Box>
           </Box>
         </Box>
-        {!isConnected && <CircularProgress size={20} sx={{ color: '#FFFFFF' }} />}
+        {!isConnected && <CircularProgress size={16} sx={{ color: '#FFFFFF' }} />}
       </Box>
 
       <Box sx={{ flex: 1, overflowY: 'auto', p: 2, bgcolor: '#F8FAFC' }}>
@@ -194,13 +197,12 @@ function RealTimeChatBox({ artistId, artistName, currentUser, commissionId }) {
           placeholder="Type a message..."
           value={message}
           onChange={handleTyping}
-          disabled={!isConnected}
           sx={{ '& .MuiOutlinedInput-root': { borderRadius: '40px', bgcolor: '#F8FAFC' } }}
         />
         <Button
           type="submit"
           variant="contained"
-          disabled={!message.trim() || !isConnected}
+          disabled={!message.trim()}
           sx={{ bgcolor: '#4A9FBF', borderRadius: '40px', minWidth: 'auto', px: 3, '&:hover': { bgcolor: '#388EAC' } }}
         >
           <SendIcon />
