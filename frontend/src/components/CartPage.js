@@ -3,13 +3,15 @@ import React, { useState, useEffect } from 'react';
 import { useNavigate, Link } from 'react-router-dom';
 import {
   Box, Container, Typography, Card, CardContent, Grid,
-  Button, IconButton, Stack, Divider, Avatar, Paper
+  Button, IconButton, Stack, Divider, Paper
 } from '@mui/material';
 import DeleteIcon from '@mui/icons-material/Delete';
 import AddIcon from '@mui/icons-material/Add';
 import RemoveIcon from '@mui/icons-material/Remove';
 import ShoppingCartIcon from '@mui/icons-material/ShoppingCart';
 import { cartService } from '../services/RealTimeDataService';
+// FIX 1: Import PaymentService untuk injeksi transaksi
+import { createTransaction } from '../services/PaymentService'; 
 
 function CartPage() {
   const navigate = useNavigate();
@@ -43,8 +45,40 @@ function CartPage() {
     loadCart();
   };
 
+  // FIX 2: Engine Checkout Sungguhan
   const handleCheckout = () => {
-    alert('Checkout feature coming soon!');
+    try {
+      if (cartItems.length === 0) return;
+
+      // Loop semua barang di keranjang dan ubah menjadi Transaksi
+      cartItems.forEach(item => {
+        const transactionData = {
+          userId: currentUser.id,
+          userName: currentUser.fullName || currentUser.username,
+          productId: item.commissionId || item.id,
+          productTitle: item.title,
+          productPrice: item.price * item.quantity, // Harga x Jumlah
+          artistId: item.artistId || null,
+          artistName: item.artistName,
+          quantity: item.quantity,
+          productFile: item.productFile || null // Jika ada file digital
+        };
+
+        // Lempar ke PaymentService buatan Nailah/Bila
+        createTransaction(transactionData);
+      });
+
+      // Bersihkan keranjang setelah checkout sukses
+      cartService.clearCart(currentUser.id);
+      
+      // Lempar user ke halaman riwayat pembelian (Tab 1: Pending Payment)
+      alert("Checkout Successful! Redirecting to your purchases...");
+      navigate('/my-purchases');
+      
+    } catch (error) {
+      console.error("Checkout Failed:", error);
+      alert("Terjadi kesalahan saat memproses checkout. Silakan coba lagi.");
+    }
   };
 
   const total = cartItems.reduce((sum, item) => sum + (item.price * item.quantity), 0);
