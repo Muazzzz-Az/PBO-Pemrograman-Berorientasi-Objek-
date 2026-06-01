@@ -258,8 +258,16 @@ function Navbar({ isAuthenticated, user, setIsAuthenticated, setUser }) {
   useEffect(() => {
     const checkArtistNotification = () => {
       const notifData = localStorage.getItem('artist_notification');
+      
       if (notifData && isAuthenticated) {
         const currentUser = JSON.parse(localStorage.getItem('user'));
+        
+        // FIX 1: PROTEKSI ROLE (O(1) Check)
+        // Cegah Admin "mencuri" dan membaca notifikasi milik calon Artist
+        if (currentUser && currentUser.role === 'ADMIN') {
+            return; // Hentikan eksekusi, biarkan data di localStorage untuk Artist
+        }
+
         if (currentUser) {
           const NOTIF_KEY = `user_notifications_${currentUser.id}`;
           const existingNotifs = JSON.parse(localStorage.getItem(NOTIF_KEY) || '[]');
@@ -274,11 +282,15 @@ function Navbar({ isAuthenticated, user, setIsAuthenticated, setUser }) {
               timestamp: new Date().toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit' })
             };
             const updatedNotifs = [newNotification, ...existingNotifs];
+            
+            // Simpan ke inbox privat user
             localStorage.setItem(NOTIF_KEY, JSON.stringify(updatedNotifs));
             setNotifications(updatedNotifs);
             setUnreadCount(prev => prev + 1);
           }
         }
+        
+        // Hanya hapus trigger global JIKA yang sedang login bukan Admin
         localStorage.removeItem('artist_notification');
       }
     };
