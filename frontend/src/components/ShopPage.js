@@ -1,4 +1,4 @@
-// src/components/ShopPage.js - FULLY FIXED with per-user notifications
+// src/components/ShopPage.js - FULLY FIXED with storage limit
 import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import {
@@ -42,21 +42,47 @@ import CheckCircleIcon from '@mui/icons-material/CheckCircle';
 const SHOP_PRODUCTS_KEY = 'creartsi_shop_products';
 const PRODUCT_INTERESTS_KEY = 'creartsi_product_interests';
 
-// Get all shop products - FIXED
+// Get all shop products
 const getShopProducts = () => {
   const saved = localStorage.getItem(SHOP_PRODUCTS_KEY);
   return saved ? JSON.parse(saved) : [];
 };
 
-// Save product interest (when user wants to buy)
-const saveProductInterest = (interest) => {
-  const interests = JSON.parse(localStorage.getItem(PRODUCT_INTERESTS_KEY) || '[]');
-  const exists = interests.find(i => i.productId === interest.productId && i.buyerId === interest.buyerId);
-  if (!exists) {
-    interests.push(interest);
-    localStorage.setItem(PRODUCT_INTERESTS_KEY, JSON.stringify(interests));
+// Clean storage jika penuh
+const cleanStorage = () => {
+  try {
+    for (let i = 0; i < localStorage.length; i++) {
+      const key = localStorage.key(i);
+      if (key && (key.includes('chat_') || key.includes('_notifications_'))) {
+        const data = JSON.parse(localStorage.getItem(key) || '[]');
+        if (data.length > 50) {
+          localStorage.setItem(key, JSON.stringify(data.slice(0, 50)));
+        }
+      }
+    }
+  } catch (e) {
+    console.log('Storage clean failed');
   }
-  return interest;
+};
+
+// Save product interest (with storage limit)
+const saveProductInterest = (interest) => {
+  try {
+    const interests = JSON.parse(localStorage.getItem(PRODUCT_INTERESTS_KEY) || '[]');
+    const exists = interests.find(i => i.productId === interest.productId && i.buyerId === interest.buyerId);
+    if (!exists) {
+      const limitedInterests = interests.slice(0, 49);
+      limitedInterests.push(interest);
+      localStorage.setItem(PRODUCT_INTERESTS_KEY, JSON.stringify(limitedInterests));
+    }
+    return interest;
+  } catch (error) {
+    if (error.name === 'QuotaExceededError') {
+      cleanStorage();
+      localStorage.setItem(PRODUCT_INTERESTS_KEY, JSON.stringify([interest]));
+    }
+    return interest;
+  }
 };
 
 // Categories
@@ -175,7 +201,7 @@ const ProductCard = ({ product, onContact }) => {
             '&:hover': { bgcolor: '#1A6B8A' }
           }}
         >
-          💬 Chat to Buy
+          Chat to Buy
         </Button>
       </CardContent>
     </Card>
@@ -183,16 +209,13 @@ const ProductCard = ({ product, onContact }) => {
 };
 
 // ==========================================
-// INTEREST MODAL (FIXED - dengan per-user notifications)
+// INTEREST MODAL (FIXED)
 // ==========================================
 const InterestModal = ({ open, onClose, product, onInterestConfirmed, navigate }) => {
   const [loading, setLoading] = useState(false);
 
   const handleConfirm = () => {
-    // Ambil user langsung dari localStorage setiap kali (paling aman)
     const currentUserFromStorage = JSON.parse(localStorage.getItem('user'));
-
-    console.log('InterestModal - user from storage:', currentUserFromStorage);
 
     if (!currentUserFromStorage || !currentUserFromStorage.id) {
       alert('Please login first to contact artist');
@@ -203,7 +226,6 @@ const InterestModal = ({ open, onClose, product, onInterestConfirmed, navigate }
 
     if (!product?.artistId) {
       alert('Error: Artist ID not found for this product');
-      console.error('Product missing artistId:', product);
       onClose();
       return;
     }
@@ -211,16 +233,14 @@ const InterestModal = ({ open, onClose, product, onInterestConfirmed, navigate }
     setLoading(true);
 
     setTimeout(() => {
-      // Buat roomId untuk chat
       const roomId = `chat_${Math.min(currentUserFromStorage.id, product.artistId)}_${Math.max(currentUserFromStorage.id, product.artistId)}`;
 
-      // Save interest to localStorage
+      // Simpan interest (TANPA productImage base64)
       const interest = {
         id: Date.now(),
         productId: product.id,
         productTitle: product.title,
         productPrice: product.price,
-        productImage: product.coverImage,
         artistId: product.artistId,
         artistName: product.artistName,
         buyerId: currentUserFromStorage.id,
@@ -233,15 +253,15 @@ const InterestModal = ({ open, onClose, product, onInterestConfirmed, navigate }
 
       saveProductInterest(interest);
 
-      // Buat chat history kosong jika belum ada
-      const existingChat = localStorage.getItem(roomId);
-      if (!existingChat) {
+      // Buat chat history jika belum ada
+      if (!localStorage.getItem(roomId)) {
         localStorage.setItem(roomId, JSON.stringify([]));
       }
 
-      // Notify artist (sudah per artistId)
+      // Notifikasi ke ARTIST (max 50)
       const artistNotifs = JSON.parse(localStorage.getItem(`artist_notifications_${product.artistId}`) || '[]');
-      artistNotifs.unshift({
+      const limitedArtistNotifs = artistNotifs.slice(0, 49);
+      limitedArtistNotifs.unshift({
         id: Date.now(),
         type: 'PRODUCT_INTEREST',
         title: '🛍️ Someone wants to buy your product!',
@@ -253,19 +273,20 @@ const InterestModal = ({ open, onClose, product, onInterestConfirmed, navigate }
         isRead: false,
         timestamp: new Date().toISOString()
       });
-      localStorage.setItem(`artist_notifications_${product.artistId}`, JSON.stringify(artistNotifs));
+      localStorage.setItem(`artist_notifications_${product.artistId}`, JSON.stringify(limitedArtistNotifs));
 
-      // 🔥 PERBAIKAN: Add to user notifications (PER USER, bukan global)
-      const NOTIF_KEY = `user_notifications_${currentUserFromStorage.id}`;
-      const notifications = JSON.parse(localStorage.getItem(NOTIF_KEY) || '[]');
-      notifications.unshift({
+      // Notifikasi ke PEMBELI (PER USER)
+      const buyerNotifKey = `user_notifications_${currentUserFromStorage.id}`;
+      const buyerNotifs = JSON.parse(localStorage.getItem(buyerNotifKey) || '[]');
+      const limitedBuyerNotifs = buyerNotifs.slice(0, 49);
+      limitedBuyerNotifs.unshift({
         id: Date.now(),
-        message: `💬 You expressed interest in "${product.title}". Chat with ${product.artistName} to negotiate!`,
+        message: `You expressed interest in "${product.title}". Chat with ${product.artistName} to negotiate!`,
         type: 'INTEREST_CONFIRMED',
         isRead: false,
         timestamp: new Date().toLocaleTimeString()
       });
-      localStorage.setItem(NOTIF_KEY, JSON.stringify(notifications));
+      localStorage.setItem(buyerNotifKey, JSON.stringify(limitedBuyerNotifs));
 
       window.dispatchEvent(new Event('storage'));
 
@@ -273,7 +294,6 @@ const InterestModal = ({ open, onClose, product, onInterestConfirmed, navigate }
       onInterestConfirmed(interest);
       onClose();
 
-      // Redirect ke halaman messages dengan navigate
       if (navigate) {
         navigate(`/messages?userId=${product.artistId}&productId=${product.id}&productTitle=${encodeURIComponent(product.title)}&productPrice=${product.price}`);
       }
@@ -297,10 +317,8 @@ const InterestModal = ({ open, onClose, product, onInterestConfirmed, navigate }
         <Box sx={{ mb: 3, p: 2, bgcolor: '#F8FAFC', borderRadius: '16px' }}>
           <Typography variant="subtitle2" color="text.secondary">Product</Typography>
           <Typography variant="body1" fontWeight={700}>{product.title}</Typography>
-
           <Typography variant="subtitle2" color="text.secondary" sx={{ mt: 2 }}>Artist</Typography>
           <Typography variant="body1">{product.artistName}</Typography>
-
           <Typography variant="subtitle2" color="text.secondary" sx={{ mt: 2 }}>Price</Typography>
           <Typography variant="h5" fontWeight={800} color="#1A6B8A">
             Rp {product.price?.toLocaleString('id-ID')}
@@ -308,23 +326,18 @@ const InterestModal = ({ open, onClose, product, onInterestConfirmed, navigate }
         </Box>
 
         <Alert severity="info" sx={{ borderRadius: '12px', mb: 2 }}>
-          💬 You will be connected to {product.artistName} via chat. Discuss details, negotiate price, and arrange payment directly.
+           You will be connected to {product.artistName} via chat. Discuss details, negotiate price, and arrange payment directly.
         </Alert>
 
         <Alert severity="warning" sx={{ borderRadius: '12px' }}>
-          ⚠️ Payment is done outside the platform. CreartsI is not responsible for transactions made outside. Please communicate clearly and keep proof of payment.
+          ⚠️ Payment is done outside the platform. CreartsI is not responsible for transactions made outside.
         </Alert>
       </DialogContent>
 
       <DialogActions sx={{ p: 3, borderTop: '1px solid #E2E8F0' }}>
         <Button onClick={onClose} variant="outlined">Cancel</Button>
-        <Button
-          onClick={handleConfirm}
-          variant="contained"
-          disabled={loading}
-          sx={{ bgcolor: '#4A9FBF' }}
-        >
-          {loading ? 'Processing...' : '💬 Start Chat & Negotiate'}
+        <Button onClick={handleConfirm} variant="contained" disabled={loading} sx={{ bgcolor: '#4A9FBF' }}>
+          {loading ? 'Processing...' : 'Start Chat & Negotiate'}
         </Button>
       </DialogActions>
     </Dialog>
@@ -400,9 +413,6 @@ function ShopPage() {
 
   const handleContactArtist = (product) => {
     const userFromStorage = JSON.parse(localStorage.getItem('user'));
-
-    console.log('handleContactArtist - user from storage:', userFromStorage);
-    console.log('handleContactArtist - product:', product);
 
     if (!userFromStorage || !userFromStorage.id) {
       alert('Please login first to contact artist');
@@ -522,7 +532,7 @@ function ShopPage() {
       {featuredProducts.length > 0 && selectedCategory === 'all' && !searchTerm && (
         <Container maxWidth="lg" sx={{ mb: 5 }}>
           <Typography variant="h5" fontWeight={800} sx={{ color: '#1A6B8A', mb: 3 }}>
-            ⭐ Featured Products
+            Featured Products
           </Typography>
           <Grid container spacing={3}>
             {featuredProducts.slice(0, 4).map((product) => (
@@ -603,7 +613,7 @@ function ShopPage() {
         <Alert severity="success" sx={{ borderRadius: '16px' }}>
           <Stack direction="row" alignItems="center" spacing={2}>
             <CheckCircleIcon />
-            <span>✅ Request sent! You can now chat with the artist.</span>
+            <span>Request sent! You can now chat with the artist.</span>
             <Button
               size="small"
               variant="outlined"

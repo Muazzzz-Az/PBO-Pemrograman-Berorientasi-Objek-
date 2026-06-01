@@ -26,6 +26,11 @@ public class UserController {
             .orElse(ResponseEntity.notFound().build());
     }
 
+    @GetMapping("/api/users/all")
+    public ResponseEntity<List<User>> getAllUsers() {
+        return ResponseEntity.ok(userRepository.findAll());
+    }
+
     // PUT update profile user — dipanggil saat user save profile
     @PutMapping("/{id}")
     public ResponseEntity<?> updateUser(@PathVariable Long id, @RequestBody User user) {

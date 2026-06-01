@@ -4,7 +4,6 @@ import { Box, Tabs, Tab, Typography } from '@mui/material';
 import PortfolioManager from './PortfolioManager';
 import CommissionManager from './CommissionManager';
 import ShopManager from './ShopManager';
-import PaymentVerification from './PaymentVerification';
 
 export default function ArtistDashboardTab() {
   const [activeTab, setActiveTab] = useState(0);
@@ -64,7 +63,6 @@ export default function ArtistDashboardTab() {
       >
         <Tab label="Portfolio" />
         <Tab label="Commissions" />
-        <Tab label="Payment Verification" />
       </Tabs>
 
       {renderContent()}
