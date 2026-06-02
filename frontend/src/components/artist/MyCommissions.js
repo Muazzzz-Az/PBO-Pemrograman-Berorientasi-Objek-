@@ -20,46 +20,118 @@ function MyCommissions() {
   const [openDialog, setOpenDialog] = useState(false);
   const [statusUpdate, setStatusUpdate] = useState('');
 
+  // Fungsi load data yang lebih robust
   const loadRequests = () => {
-    if (!currentUser) return;
+    if (!currentUser) {
+      console.log('No current user found');
+      return;
+    }
+
+    console.log('Loading requests for artist ID:', currentUser.id);
+    console.log('Artist username:', currentUser.username);
 
     // Ambil semua commission requests
     const commissionRequests = JSON.parse(localStorage.getItem('commission_requests') || '[]');
     const purchaseRequests = JSON.parse(localStorage.getItem('purchase_requests') || '[]');
 
-    console.log('All commission requests:', commissionRequests);
-    console.log('Current artist ID:', currentUser.id);
+    console.log('All commission requests found:', commissionRequests.length);
+    console.log('All purchase requests found:', purchaseRequests.length);
 
-    // Filter untuk artist yang login (case sensitive, pastikan ID match)
+    // Debug: log semua request untuk lihat artistId
+    commissionRequests.forEach(req => {
+      console.log(`Request: ${req.id}, artistId: ${req.artistId}, type: ${req.type}`);
+    });
+
+    // 🔥 PERBAIKAN: Filter untuk artist yang login (lebih fleksibel)
     const myCommissionRequests = commissionRequests.filter(r => {
-      const match = Number(r.artistId) === Number(currentUser.id);
-      if (match) console.log('Found request for artist:', r);
+      // Coba berbagai cara matching ID
+      const artistIdMatch = Number(r.artistId) === Number(currentUser.id);
+      const artistNameMatch = r.artistName === currentUser.fullName ||
+                              r.artistName === currentUser.username;
+      const match = artistIdMatch || artistNameMatch;
+
+      if (match) {
+        console.log('✓ Found matching commission request:', r.id, 'for', r.artistName);
+      }
       return match;
     });
 
-    const myPurchaseRequests = purchaseRequests.filter(r => Number(r.artistId) === Number(currentUser.id));
+    const myPurchaseRequests = purchaseRequests.filter(r => {
+      const match = Number(r.artistId) === Number(currentUser.id);
+      if (match) console.log('✓ Found matching purchase request:', r.id);
+      return match;
+    });
 
-    const allRequests = [...myCommissionRequests, ...myPurchaseRequests];
+    // Gabungkan semua request
+    let allRequests = [...myCommissionRequests, ...myPurchaseRequests];
+
+    // Tambahkan juga request dari product interests (chat requests)
+    const productInterests = JSON.parse(localStorage.getItem('creartsi_product_interests') || '[]');
+    const myInterests = productInterests.filter(i => Number(i.artistId) === Number(currentUser.id));
+
+    if (myInterests.length > 0) {
+      console.log('Found product interests:', myInterests.length);
+      const interestRequests = myInterests.map(interest => ({
+        id: interest.id,
+        type: 'INTEREST',
+        commissionTitle: interest.productTitle,
+        productTitle: interest.productTitle,
+        buyerName: interest.buyerName,
+        buyerUsername: interest.buyerUsername,
+        buyerId: interest.buyerId,
+        commissionPrice: interest.productPrice,
+        status: 'accepted', // Interest langsung bisa chat
+        createdAt: interest.createdAt,
+        references: 'Product interest - chat to negotiate',
+        roomId: interest.roomId
+      }));
+      allRequests = [...allRequests, ...interestRequests];
+    }
+
+    // Sort by newest first
     allRequests.sort((a, b) => new Date(b.createdAt) - new Date(a.createdAt));
 
+    console.log('Final filtered requests:', allRequests.length);
     setRequests(allRequests);
   };
 
+  // Load data saat komponen mount dan setiap ada perubahan storage
   useEffect(() => {
     if (!currentUser) {
       navigate('/login');
       return;
     }
+
+    // Load initial data
     loadRequests();
 
-    // Listen untuk update real-time
-    const handleUpdate = () => loadRequests();
-    window.addEventListener('storage', handleUpdate);
-    window.addEventListener('commissionRequestUpdated', handleUpdate);
+    // 🔥 PERBAIKAN: Event listener yang lebih agresif
+    const handleStorageChange = (e) => {
+      console.log('Storage changed:', e?.key);
+      // Reload data untuk setiap perubahan storage
+      setTimeout(() => loadRequests(), 100);
+    };
+
+    const handleCustomEvent = () => {
+      console.log('Custom commission event triggered');
+      loadRequests();
+    };
+
+    // Listen untuk berbagai event
+    window.addEventListener('storage', handleStorageChange);
+    window.addEventListener('commissionRequestUpdated', handleCustomEvent);
+    window.addEventListener('commissionDataChanged', handleCustomEvent);
+
+    // Interval fallback untuk real-time update (setiap 3 detik)
+    const intervalId = setInterval(() => {
+      loadRequests();
+    }, 3000);
 
     return () => {
-      window.removeEventListener('storage', handleUpdate);
-      window.removeEventListener('commissionRequestUpdated', handleUpdate);
+      window.removeEventListener('storage', handleStorageChange);
+      window.removeEventListener('commissionRequestUpdated', handleCustomEvent);
+      window.removeEventListener('commissionDataChanged', handleCustomEvent);
+      clearInterval(intervalId);
     };
   }, [currentUser, navigate]);
 
@@ -76,7 +148,7 @@ function MyCommissions() {
       case 'rejected':
         return <Chip label="Rejected" color="error" size="small" />;
       default:
-        return <Chip label={status} size="small" />;
+        return <Chip label={status || 'Pending'} size="small" />;
     }
   };
 
@@ -87,6 +159,8 @@ function MyCommissions() {
   };
 
   const confirmUpdate = () => {
+    if (!selectedRequest) return;
+
     // Update commission_requests
     const commissionRequests = JSON.parse(localStorage.getItem('commission_requests') || '[]');
     const updatedCommission = commissionRequests.map(r => {
@@ -107,15 +181,15 @@ function MyCommissions() {
     });
     localStorage.setItem('purchase_requests', JSON.stringify(updatedPurchase));
 
-    // Update state
+    // Update state lokal
     setRequests(prev => prev.map(r =>
       r.id === selectedRequest.id ? { ...r, status: statusUpdate } : r
     ));
 
     setOpenDialog(false);
 
-    // Notifikasi ke buyer
-    if (statusUpdate === 'accepted') {
+    // Notifikasi ke buyer jika status accepted
+    if (statusUpdate === 'accepted' && selectedRequest.buyerId) {
       const buyerNotifKey = `user_notifications_${selectedRequest.buyerId}`;
       const buyerNotifs = JSON.parse(localStorage.getItem(buyerNotifKey) || '[]');
       buyerNotifs.unshift({
@@ -128,13 +202,21 @@ function MyCommissions() {
       localStorage.setItem(buyerNotifKey, JSON.stringify(buyerNotifs));
     }
 
-    // Trigger event untuk update
+    // Trigger event untuk update di tab lain
     window.dispatchEvent(new Event('storage'));
+    window.dispatchEvent(new CustomEvent('commissionRequestUpdated'));
+
     alert(`Request ${statusUpdate} successfully!`);
   };
 
   const handleChat = (request) => {
-    navigate(`/messages?userId=${request.buyerId}&requestId=${request.id}`);
+    // Gunakan buyerId atau roomId yang tersedia
+    const targetUserId = request.buyerId || request.userId;
+    if (targetUserId) {
+      navigate(`/messages?userId=${targetUserId}&requestId=${request.id}`);
+    } else {
+      alert('Cannot start chat: buyer information missing');
+    }
   };
 
   const statusOptions = [
@@ -148,6 +230,16 @@ function MyCommissions() {
   const pendingCount = requests.filter(r => r.status === 'pending').length;
   const activeCount = requests.filter(r => r.status === 'accepted' || r.status === 'ongoing').length;
   const completedCount = requests.filter(r => r.status === 'completed').length;
+
+  if (!currentUser) {
+    return (
+      <Box sx={{ minHeight: '100vh', bgcolor: '#F0F9FF', py: 4 }}>
+        <Container maxWidth="lg">
+          <Typography>Loading...</Typography>
+        </Container>
+      </Box>
+    );
+  }
 
   return (
     <Box sx={{ minHeight: '100vh', bgcolor: '#F0F9FF', py: 4 }}>
@@ -184,6 +276,18 @@ function MyCommissions() {
           </Grid>
         </Grid>
 
+        {/* Refresh Button */}
+        <Box sx={{ mb: 2, textAlign: 'right' }}>
+          <Button
+            variant="outlined"
+            size="small"
+            onClick={loadRequests}
+            sx={{ borderRadius: '20px', textTransform: 'none' }}
+          >
+            🔄 Refresh
+          </Button>
+        </Box>
+
         {/* Requests List */}
         {requests.length === 0 ? (
           <Card sx={{ textAlign: 'center', py: 8, borderRadius: '24px' }}>
@@ -197,16 +301,17 @@ function MyCommissions() {
                 <Stack direction="row" justifyContent="space-between" alignItems="center" flexWrap="wrap" gap={2}>
                   <Box>
                     <Typography variant="caption" color="#4A9FBF" fontWeight={600}>
-                      {req.type === 'SHOP_REQUEST' ? '🛍️ Shop Request' : '🎨 Commission Request'}
+                      {req.type === 'SHOP_REQUEST' ? '🛍️ Shop Request' :
+                       req.type === 'INTEREST' ? '💬 Product Interest' : '🎨 Commission Request'}
                     </Typography>
                     <Typography variant="h6" fontWeight={800} sx={{ mt: 0.5 }}>
-                      {req.commissionTitle || req.productTitle}
+                      {req.commissionTitle || req.productTitle || 'Untitled'}
                     </Typography>
                     <Typography variant="body2" color="text.secondary">
-                      From: {req.buyerName} (@{req.buyerUsername})
+                      From: {req.buyerName} (@{req.buyerUsername || req.buyerName})
                     </Typography>
                     <Typography variant="h6" fontWeight={800} color="#1A6B8A" sx={{ mt: 1 }}>
-                      Rp {(req.commissionPrice || req.productPrice)?.toLocaleString('id-ID')}
+                      Rp {(req.commissionPrice || req.productPrice || 0)?.toLocaleString('id-ID')}
                     </Typography>
                   </Box>
                   <Box textAlign="right">
@@ -267,6 +372,16 @@ function MyCommissions() {
                     </Button>
                   )}
                   {(req.status === 'accepted' || req.status === 'ongoing') && (
+                    <Button
+                      variant="outlined"
+                      startIcon={<ChatIcon />}
+                      onClick={() => handleChat(req)}
+                      sx={{ borderRadius: '30px', textTransform: 'none', borderColor: '#4A9FBF', color: '#4A9FBF' }}
+                    >
+                      Chat with Buyer
+                    </Button>
+                  )}
+                  {req.type === 'INTEREST' && (
                     <Button
                       variant="outlined"
                       startIcon={<ChatIcon />}

@@ -1,4 +1,4 @@
-// src/components/LoginForm.js - FIXED dengan redirect ADMIN
+// src/components/LoginForm.js
 import React, { useState } from 'react';
 import { useNavigate, Link } from 'react-router-dom';
 
@@ -64,6 +64,8 @@ function LoginForm({ setIsAuthenticated, setUser }) {
         setLoading(true);
 
         try {
+            console.log('🔍 Attempting login with:', formData.username);
+
             const response = await fetch('http://localhost:8080/api/auth/login', {
                 method: 'POST',
                 headers: {
@@ -73,14 +75,17 @@ function LoginForm({ setIsAuthenticated, setUser }) {
             });
 
             const data = await response.json();
-            console.log('Login response:', data); // DEBUG
+            console.log('🔍 Login response:', data);
 
             if (response.ok) {
-                const userRole = data.user.role;
-                const isVerified = data.user.isVerified;
+                const userRole = data.user?.role?.toLowerCase();
+                const isVerified = data.user?.isVerified === true;
 
-                // ONLY verified artists can login as artist (tapi ADMIN tetap bisa)
-                if (userRole === 'artist' && isVerified !== true) {
+                console.log('🔍 User role:', userRole);
+                console.log('🔍 Is verified:', isVerified);
+
+                // Validasi artist harus terverifikasi
+                if (userRole === 'artist' && !isVerified) {
                     setError('Your artist account is pending verification. Please wait for admin approval.');
                     setLoading(false);
                     return;
@@ -94,9 +99,9 @@ function LoginForm({ setIsAuthenticated, setUser }) {
                 setIsAuthenticated(true);
                 setUser(data.user);
 
-                // Redirect berdasarkan role (support 'admin' dan 'ADMIN')
-                if (userRole === 'admin' || userRole === 'ADMIN') {
-                    console.log('Redirecting to /admin...');
+                // Redirect berdasarkan role
+                if (userRole === 'admin') {
+                    console.log('🔍 Redirecting to /admin...');
                     navigate('/admin');
                 } else {
                     navigate('/');
@@ -105,8 +110,8 @@ function LoginForm({ setIsAuthenticated, setUser }) {
                 setError(data.message || 'Invalid username or password.');
             }
         } catch (error) {
-            console.error('Login error:', error);
-            setError('Connection failed. Please try again later.');
+            console.error('❌ Login error:', error);
+            setError('Cannot connect to server. Make sure the backend is running on port 8080.');
         } finally {
             setLoading(false);
         }
@@ -150,7 +155,8 @@ function LoginForm({ setIsAuthenticated, setUser }) {
                             marginBottom: '20px',
                             fontSize: '0.85rem',
                             fontWeight: 500,
-                            textAlign: 'left'
+                            textAlign: 'left',
+                            borderLeft: '4px solid #E74C3C'
                         }}>
                             ⚠️ {error}
                         </div>
