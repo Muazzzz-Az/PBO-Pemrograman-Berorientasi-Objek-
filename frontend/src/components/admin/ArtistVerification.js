@@ -1,6 +1,7 @@
 // src/components/admin/ArtistVerification.js
 import React, { useState, useEffect } from 'react';
 import { Table, TableBody, TableCell, TableContainer, TableHead, TableRow, Paper, Button, Typography, Chip, Box } from '@mui/material';
+import toast from 'react-hot-toast';
 
 function ArtistVerification() {
   const [submissions, setSubmissions] = useState([]);
@@ -54,7 +55,7 @@ function ArtistVerification() {
         const userId = backendUser?.id;
 
         if (!userId) {
-          alert(`User ${currentSub.username} tidak ditemukan di backend!`);
+          toast.error(`User ${currentSub.username} tidak ditemukan di backend!`);
           return;
         }
 
@@ -119,13 +120,13 @@ function ArtistVerification() {
           setSubmissions(updated);
           localStorage.setItem('artist_submissions', JSON.stringify(updated));
 
-          alert(`Application APPROVED successfully!`);
+          toast.success(`Application APPROVED successfully!`);
         } else {
-          alert(`Failed: ${approveData.message || 'Unknown error'}`);
+          toast.error(`Failed: ${approveData.message || 'Unknown error'}`);
         }
       } catch (error) {
         console.error("Error:", error);
-        alert(`Failed to approve: ${error.message}`);
+        toast.error(`Failed to approve: ${error.message}`);
       }
     } else {
       // REJECTED - PAKAI LOGIC ASLI TEMANMU
@@ -137,7 +138,7 @@ function ArtistVerification() {
       });
       setSubmissions(updated);
       localStorage.setItem('artist_submissions', JSON.stringify(updated));
-      alert(`Application REJECTED successfully!`);
+      toast.success(`Application REJECTED successfully!`);
     }
   };
 

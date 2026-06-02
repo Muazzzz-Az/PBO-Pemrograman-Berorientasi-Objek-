@@ -327,7 +327,7 @@ function ArtistDetail() {
 
   // Load Data - Get REAL artist data
   useEffect(() => {
-    const loadData = () => {
+    const loadData = async () => {
       setLoading(true);
 
       const commissions = getArtistCommissions();
@@ -338,7 +338,50 @@ function ArtistDetail() {
 
         const artistName = foundCommission.artistName;
         const artistId = foundCommission.artistId;
-        const fullArtistData = getFullArtistData(artistName, artistId);
+        let fullArtistData = getFullArtistData(artistName, artistId);
+
+        if (!fullArtistData && artistId) {
+          try {
+            const response = await fetch(`http://localhost:8080/api/users/${artistId}`);
+            if (response.ok) {
+              const data = await response.json();
+              if (data) {
+                fullArtistData = {
+                  id: data.id,
+                  artistName: data.fullName,
+                  name: data.fullName,
+                  username: data.username,
+                  bio: data.bio || 'Professional artist',
+                  avatarUrl: data.avatarUrl || null,
+                  profilePicture: data.avatarUrl || 'https://i.pravatar.cc/150?img=1',
+                  rating: data.rating || 5,
+                  totalReviews: data.totalReviews || 0,
+                  isVerified: data.isVerified === true,
+                  email: data.email
+                };
+                
+                // Sync to registered_users
+                const registeredUsers = JSON.parse(localStorage.getItem('registered_users') || '[]');
+                if (!registeredUsers.some(u => u.id === data.id)) {
+                  registeredUsers.push({
+                    id: data.id,
+                    username: data.username,
+                    email: data.email,
+                    fullName: data.fullName,
+                    role: data.role || 'artist',
+                    isVerified: data.isVerified === true,
+                    bio: data.bio,
+                    avatarUrl: data.avatarUrl,
+                    createdAt: data.createdAt || new Date().toISOString()
+                  });
+                  localStorage.setItem('registered_users', JSON.stringify(registeredUsers));
+                }
+              }
+            }
+          } catch (e) {
+            console.error('Error fetching artist from backend in ArtistDetail:', e);
+          }
+        }
 
         if (fullArtistData) {
           console.log('Artist data loaded:', fullArtistData);

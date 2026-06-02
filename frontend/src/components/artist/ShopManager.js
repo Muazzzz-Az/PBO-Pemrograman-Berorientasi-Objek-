@@ -13,6 +13,7 @@ import {
   ShoppingBag as ShopIcon, AttachFile as FileIcon
 } from '@mui/icons-material';
 import BaseCard from './BaseCard';
+import toast from 'react-hot-toast';
 
 const SHOP_PRODUCTS_KEY = 'creartsi_shop_products';
 
@@ -22,6 +23,39 @@ const fileToBase64 = (file) => {
     reader.readAsDataURL(file);
     reader.onload = () => resolve(reader.result);
     reader.onerror = reject;
+  });
+};
+
+const compressImage = (base64Str, maxWidth = 800, maxHeight = 800) => {
+  return new Promise((resolve) => {
+    const img = new Image();
+    img.src = base64Str;
+    img.onload = () => {
+      let width = img.width;
+      let height = img.height;
+
+      if (width > height) {
+        if (width > maxWidth) {
+          height = Math.round((height * maxWidth) / width);
+          width = maxWidth;
+        }
+      } else {
+        if (height > maxHeight) {
+          width = Math.round((width * maxHeight) / height);
+          height = maxHeight;
+        }
+      }
+
+      const canvas = document.createElement('canvas');
+      canvas.width = width;
+      canvas.height = height;
+      const ctx = canvas.getContext('2d');
+      ctx.drawImage(img, 0, 0, width, height);
+      resolve(canvas.toDataURL('image/jpeg', 0.7));
+    };
+    img.onerror = () => {
+      resolve(base64Str);
+    };
   });
 };
 
@@ -38,14 +72,16 @@ const ImageUploadField = ({ label, value, onChange, multiple = false }) => {
         const newImages = [...(value || [])];
         for (const file of files) {
           const base64 = await fileToBase64(file);
-          newImages.push(base64);
+          const compressed = await compressImage(base64);
+          newImages.push(compressed);
         }
         onChange(newImages);
       } else {
         const base64 = await fileToBase64(files[0]);
-        onChange(base64);
+        const compressed = await compressImage(base64);
+        onChange(compressed);
       }
-    } catch (error) { alert('Failed to upload image'); }
+    } catch (error) { toast.error('Failed to upload image'); }
     setLoading(false);
   };
 
@@ -99,8 +135,14 @@ const FileUploadField = ({ label, value, onChange }) => {
     setLoading(true);
     try {
       const base64 = await fileToBase64(file);
-      onChange({ base64, name: file.name, size: file.size });
-    } catch (error) { alert('Failed to upload file'); }
+      const maxStorageSize = 100 * 1024; // 100 KB limit for local storage
+      let finalBase64 = base64;
+      if (base64.length > maxStorageSize) {
+        console.warn('File size too large for local storage, substituting with mock base64.');
+        finalBase64 = 'data:text/plain;base64,TW9jayBmaWxlIGNvbnRlbnQgKGZpbGUgd2FzIHRvbyBsYXJnZSBmb3IgbG9jYWxTdG9yYWdlLCBzbyBpdCB3YXMgcmVwbGFjZWQgd2l0aCB0aGlzIG1vY2sgZmlsZSk=';
+      }
+      onChange({ base64: finalBase64, name: file.name, size: file.size });
+    } catch (error) { toast.error('Failed to upload file'); }
     setLoading(false);
   };
 
@@ -192,11 +234,11 @@ const ShopManager = ({ user }) => {
 
 const handleSaveProduct = () => {
   if (!formData.title || !formData.price || !formData.category) {
-    alert('Please fill all required fields');
+    toast.error('Please fill all required fields');
     return;
   }
   if (!formData.digitalFile) {
-    alert('Please upload the digital file');
+    toast.error('Please upload the digital file');
     return;
   }
 
@@ -230,6 +272,7 @@ const handleSaveProduct = () => {
     saveToLocalStorage(newProducts);
     setLoading(false);
     setOpenDialog(false);
+    toast.success(editingProduct ? 'Product updated successfully!' : 'Product published successfully!');
   }, 500);
 };
 
@@ -297,21 +340,33 @@ const handleSaveProduct = () => {
         <DialogContent sx={{ py: 3, overflowY: 'auto' }}>
           {loading && <LinearProgress sx={{ mb: 2, borderRadius: 2 }} />}
           <Alert severity="info" sx={{ mb: 3, borderRadius: '8px' }}>💡 Digital products only. Buyers get instant download link after purchase.</Alert>
-
           <Typography variant="subtitle2" fontWeight={700} color="#1A6B8A" sx={{ mb: 2 }}>Basic Information</Typography>
-          <Grid container spacing={2} sx={{ mb: 4 }}>
-            <Grid item xs={12} md={8}><TextField fullWidth label="Product Title" value={formData.title} onChange={(e) => setFormData({ ...formData, title: e.target.value })} /></Grid>
-            <Grid item xs={12} md={4}><FormControl fullWidth><InputLabel>Category</InputLabel><Select value={formData.category} onChange={(e) => setFormData({ ...formData, category: e.target.value })} label="Category">{categories.map(cat => <MenuItem key={cat} value={cat}>{cat}</MenuItem>)}</Select></FormControl></Grid>
-            <Grid item xs={12}><TextField fullWidth label="Description" multiline rows={3} value={formData.description} onChange={(e) => setFormData({ ...formData, description: e.target.value })} placeholder="Describe what buyers will get..." /></Grid>
-          </Grid>
+          <Stack spacing={2.5} sx={{ mb: 4 }}>
+            <Stack direction={{ xs: 'column', sm: 'row' }} spacing={2}>
+              <Box sx={{ flex: { xs: 1, sm: 2 } }}>
+                <TextField fullWidth label="Product Title" value={formData.title} onChange={(e) => setFormData({ ...formData, title: e.target.value })} />
+              </Box>
+              <Box sx={{ flex: 1, minWidth: { sm: '200px' } }}>
+                <FormControl fullWidth>
+                  <InputLabel>Category</InputLabel>
+                  <Select value={formData.category} onChange={(e) => setFormData({ ...formData, category: e.target.value })} label="Category">
+                    {categories.map(cat => <MenuItem key={cat} value={cat}>{cat}</MenuItem>)}
+                  </Select>
+                </FormControl>
+              </Box>
+            </Stack>
+            <TextField fullWidth label="Description" multiline rows={3} value={formData.description} onChange={(e) => setFormData({ ...formData, description: e.target.value })} placeholder="Describe what buyers will get..." />
+          </Stack>
 
           <Divider sx={{ my: 3 }} />
           <Typography variant="subtitle2" fontWeight={700} color="#1A6B8A" sx={{ mb: 2 }}>Pricing & License</Typography>
-          <Grid container spacing={2} sx={{ mb: 4 }}>
-            <Grid item xs={12} md={6}><TextField fullWidth label="Price (Rp)" type="number" value={formData.price} onChange={(e) => setFormData({ ...formData, price: parseInt(e.target.value) || '' })} InputProps={{ startAdornment: <InputAdornment position="start">Rp</InputAdornment> }} /></Grid>
-            <Grid item xs={12} md={6}><TextField fullWidth label="Stock" type="number" value={formData.stock} onChange={(e) => setFormData({ ...formData, stock: parseInt(e.target.value) || 0 })} helperText="Set 0 for unlimited" /></Grid>
-            <Grid item xs={12}><FormControl fullWidth><InputLabel>License Type</InputLabel><Select value={formData.license} onChange={(e) => setFormData({ ...formData, license: e.target.value })} label="License Type">{licenseOptions.map(opt => <MenuItem key={opt.value} value={opt.value}>{opt.label} - {opt.description}</MenuItem>)}</Select></FormControl></Grid>
-          </Grid>
+          <Stack spacing={2.5} sx={{ mb: 4 }}>
+            <Stack direction={{ xs: 'column', sm: 'row' }} spacing={2}>
+              <TextField fullWidth label="Price (Rp)" type="number" value={formData.price} onChange={(e) => setFormData({ ...formData, price: parseInt(e.target.value) || '' })} InputProps={{ startAdornment: <InputAdornment position="start">Rp</InputAdornment> }} />
+              <TextField fullWidth label="Stock" type="number" value={formData.stock} onChange={(e) => setFormData({ ...formData, stock: parseInt(e.target.value) || 0 })} helperText="Set 0 for unlimited" />
+            </Stack>
+            <FormControl fullWidth><InputLabel>License Type</InputLabel><Select value={formData.license} onChange={(e) => setFormData({ ...formData, license: e.target.value })} label="License Type">{licenseOptions.map(opt => <MenuItem key={opt.value} value={opt.value}>{opt.label} - {opt.description}</MenuItem>)}</Select></FormControl>
+          </Stack>
 
           {/* ========== PAYMENT METHODS SECTION ========== */}
           <Divider sx={{ my: 3 }} />
@@ -333,11 +388,11 @@ const handleSaveProduct = () => {
 
           <Divider sx={{ my: 3 }} />
           <Typography variant="subtitle2" fontWeight={700} color="#1A6B8A" sx={{ mb: 2 }}>Media & Files</Typography>
-          <Grid container spacing={3} sx={{ mb: 4 }}>
-            <Grid item xs={12}><ImageUploadField label="Cover Image" value={formData.coverImage} onChange={(val) => setFormData({ ...formData, coverImage: val })} /></Grid>
-            <Grid item xs={12}><ImageUploadField label="Sample Images (Optional)" value={formData.sampleImages} onChange={(val) => setFormData({ ...formData, sampleImages: val })} multiple /></Grid>
-            <Grid item xs={12}><FileUploadField label="Digital File (ZIP, PNG, JPG, PDF, MP4)" value={formData.digitalFile} onChange={(val) => setFormData({ ...formData, digitalFile: val })} /></Grid>
-          </Grid>
+          <Stack spacing={3} sx={{ mb: 4 }}>
+            <ImageUploadField label="Cover Image" value={formData.coverImage} onChange={(val) => setFormData({ ...formData, coverImage: val })} />
+            <ImageUploadField label="Sample Images (Optional)" value={formData.sampleImages} onChange={(val) => setFormData({ ...formData, sampleImages: val })} multiple />
+            <FileUploadField label="Digital File (ZIP, PNG, JPG, PDF, MP4)" value={formData.digitalFile} onChange={(val) => setFormData({ ...formData, digitalFile: val })} />
+          </Stack>
 
           <Divider sx={{ my: 3 }} />
           <Typography variant="subtitle2" fontWeight={700} color="#1A6B8A" sx={{ mb: 2 }}>Tags</Typography>

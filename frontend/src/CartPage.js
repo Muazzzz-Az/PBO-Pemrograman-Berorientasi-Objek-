@@ -1,6 +1,7 @@
 // src/components/CartPage.js
 import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
+import toast from 'react-hot-toast';
 import {
   Box, Container, Typography, Card, CardContent, Grid,
   Button, IconButton, Stack, Divider, Avatar
@@ -44,7 +45,7 @@ function CartPage() {
   };
 
   const handleCheckout = () => {
-    alert('Checkout feature coming soon!');
+    toast('Checkout feature coming soon!', { icon: 'ℹ️' });
   };
 
   const total = cartItems.reduce((sum, item) => sum + (item.price * item.quantity), 0);

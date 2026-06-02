@@ -310,7 +310,7 @@ function Navbar({ isAuthenticated, user, setIsAuthenticated, setUser }) {
     navigate('/');
   };
 
-  const handleLogout = () => {
+  const handleLogout = (redirectTo = '/') => {
     localStorage.removeItem('token');
     localStorage.removeItem('user');
     localStorage.removeItem('artist_notification');
@@ -318,7 +318,12 @@ function Navbar({ isAuthenticated, user, setIsAuthenticated, setUser }) {
     setIsAuthenticated(false);
     setUser(null);
     setAnchorEl(null);
-    navigate('/');
+    setAnchorElNotif(null);
+    setMobileOpen(false);
+    setOpenReLogin(false);
+    
+    const targetPath = typeof redirectTo === 'string' ? redirectTo : '/';
+    navigate(targetPath);
   };
 
   const handleMenuOpen = (event) => setAnchorEl(event.currentTarget);
@@ -737,7 +742,7 @@ function Navbar({ isAuthenticated, user, setIsAuthenticated, setUser }) {
           </Typography>
         </DialogContent>
         <DialogActions sx={{ justifyContent: 'center', pb: 3 }}>
-          <Button variant="contained" onClick={handleLogout} sx={{ borderRadius: '30px', px: 4, bgcolor: '#4A9FBF' }}>
+          <Button variant="contained" onClick={() => handleLogout('/login')} sx={{ borderRadius: '30px', px: 4, bgcolor: '#4A9FBF' }}>
             Re-Login Now
           </Button>
         </DialogActions>

@@ -39,6 +39,7 @@ import {
 } from '@mui/icons-material';
 import BaseCard from './BaseCard';
 import { ImageUpload, MultiImageUpload, MusicUpload } from './BaseMediaUpload';
+import toast from 'react-hot-toast';
 
 // ENCAPSULATION: Kelas untuk mengelola state Commission
 class CommissionManagerService {
@@ -231,11 +232,11 @@ const CommissionManager = () => {
 
   const handleSave = () => {
     if (!formData.title || !formData.category) {
-      alert('Judul dan kategori wajib diisi!');
+      toast.error('Judul dan kategori wajib diisi!');
       return;
     }
     if (!formData.priceFrom) {
-      alert('Harga minimal wajib diisi!');
+      toast.error('Harga minimal wajib diisi!');
       return;
     }
 
@@ -252,6 +253,7 @@ const CommissionManager = () => {
       saveCommissions(newCommissions);
       setLoading(false);
       setOpenDialog(false);
+      toast.success(editingCommission ? 'Paket komisi berhasil diperbarui!' : 'Paket komisi berhasil dipublikasikan!');
     }, 500);
   };
 

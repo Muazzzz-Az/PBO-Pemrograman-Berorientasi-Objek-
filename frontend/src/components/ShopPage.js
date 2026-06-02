@@ -35,6 +35,7 @@ import FilterListIcon from '@mui/icons-material/FilterList';
 import SortIcon from '@mui/icons-material/Sort';
 import CloseIcon from '@mui/icons-material/Close';
 import CheckCircleIcon from '@mui/icons-material/CheckCircle';
+import toast from 'react-hot-toast';
 
 // ==========================================
 // SHOP SERVICE
@@ -218,14 +219,14 @@ const InterestModal = ({ open, onClose, product, onInterestConfirmed, navigate }
     const currentUserFromStorage = JSON.parse(localStorage.getItem('user'));
 
     if (!currentUserFromStorage || !currentUserFromStorage.id) {
-      alert('Please login first to contact artist');
+      toast.error('Please login first to contact artist');
       onClose();
       if (navigate) navigate('/login');
       return;
     }
 
     if (!product?.artistId) {
-      alert('Error: Artist ID not found for this product');
+      toast.error('Error: Artist ID not found for this product');
       onClose();
       return;
     }
@@ -252,6 +253,25 @@ const InterestModal = ({ open, onClose, product, onInterestConfirmed, navigate }
       };
 
       saveProductInterest(interest);
+
+      // Auto-create transaction in creartsi_transactions so it shows in purchases
+      const trx = {
+        id: Date.now(),
+        transactionCode: 'TRX-' + Date.now(),
+        productId: product.id,
+        productTitle: product.title,
+        productPrice: product.price,
+        artistId: product.artistId,
+        artistName: product.artistName,
+        buyerId: currentUserFromStorage.id,
+        status: 'waiting_payment',
+        productFile: product.digitalFile || null,
+        createdAt: new Date().toISOString(),
+        expireAt: new Date(Date.now() + 24 * 60 * 60 * 1000).toISOString()
+      };
+      const transactions = JSON.parse(localStorage.getItem('creartsi_transactions') || '[]');
+      transactions.unshift(trx);
+      localStorage.setItem('creartsi_transactions', JSON.stringify(transactions));
 
       // Buat chat history jika belum ada
       if (!localStorage.getItem(roomId)) {
@@ -415,13 +435,13 @@ function ShopPage() {
     const userFromStorage = JSON.parse(localStorage.getItem('user'));
 
     if (!userFromStorage || !userFromStorage.id) {
-      alert('Please login first to contact artist');
+      toast.error('Please login first to contact artist');
       navigate('/login');
       return;
     }
 
     if (!product.artistId) {
-      alert('Error: This product does not have artist information. Please contact support.');
+      toast.error('Error: This product does not have artist information. Please contact support.');
       return;
     }
 

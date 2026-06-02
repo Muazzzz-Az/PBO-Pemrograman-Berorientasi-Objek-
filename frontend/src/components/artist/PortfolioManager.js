@@ -29,6 +29,7 @@ import {
   Edit as EditIcon
 } from '@mui/icons-material';
 import BaseCard from './BaseCard';
+import toast from 'react-hot-toast';
 
 const PORTFOLIO_KEY = 'creartsi_artist_portfolio';
 
@@ -38,6 +39,39 @@ const fileToBase64 = (file) => {
     reader.readAsDataURL(file);
     reader.onload = () => resolve(reader.result);
     reader.onerror = reject;
+  });
+};
+
+const compressImage = (base64Str, maxWidth = 800, maxHeight = 800) => {
+  return new Promise((resolve) => {
+    const img = new Image();
+    img.src = base64Str;
+    img.onload = () => {
+      let width = img.width;
+      let height = img.height;
+
+      if (width > height) {
+        if (width > maxWidth) {
+          height = Math.round((height * maxWidth) / width);
+          width = maxWidth;
+        }
+      } else {
+        if (height > maxHeight) {
+          width = Math.round((width * maxHeight) / height);
+          height = maxHeight;
+        }
+      }
+
+      const canvas = document.createElement('canvas');
+      canvas.width = width;
+      canvas.height = height;
+      const ctx = canvas.getContext('2d');
+      ctx.drawImage(img, 0, 0, width, height);
+      resolve(canvas.toDataURL('image/jpeg', 0.7));
+    };
+    img.onerror = () => {
+      resolve(base64Str);
+    };
   });
 };
 
@@ -73,9 +107,10 @@ const PortfolioManager = () => {
     setLoading(true);
     try {
       const base64 = await fileToBase64(file);
-      setFormData({ ...formData, imageUrl: base64 });
+      const compressed = await compressImage(base64);
+      setFormData({ ...formData, imageUrl: compressed });
     } catch (error) {
-      alert('Failed to upload image');
+      toast.error('Failed to upload image');
     }
     setLoading(false);
   };
@@ -118,11 +153,11 @@ const PortfolioManager = () => {
 
   const handleSave = () => {
     if (!formData.imageUrl) {
-      alert('Please upload an image');
+      toast.error('Please upload an image');
       return;
     }
     if (!formData.title) {
-      alert('Please enter artwork title');
+      toast.error('Please enter artwork title');
       return;
     }
 
@@ -142,6 +177,7 @@ const PortfolioManager = () => {
 
     saveToLocalStorage(newItems);
     setOpenDialog(false);
+    toast.success(editingItem ? 'Artwork updated successfully!' : 'Artwork added to portfolio!');
   };
 
   const handleDelete = (id) => {

@@ -134,7 +134,7 @@ const ProductModal = ({ product, onClose, onNavigate }) => {
 
   const handleViewArtist = () => {
     onClose();
-    onNavigate(`/artist/${product.artistUsername || product.artistId || product.id}`);
+    onNavigate(`/artist/${product.artistUsername || product.artist || product.artistId || product.id}`);
   };
 
   return (
@@ -153,6 +153,7 @@ const ProductModal = ({ product, onClose, onNavigate }) => {
         maxWidth: '1000px',
         maxHeight: '92vh',
         overflowY: 'auto',
+        overflowX: 'hidden',
         display: 'flex',
         flexDirection: 'row',
         flexWrap: 'wrap',
@@ -160,11 +161,21 @@ const ProductModal = ({ product, onClose, onNavigate }) => {
         boxShadow: '0 30px 60px rgba(0,0,0,0.3)',
       }} onClick={(e) => e.stopPropagation()}>
         <button onClick={onClose} style={{
-          position: 'absolute', top: '15px', left: '15px',
+          position: 'absolute', top: '20px', right: '20px',
           background: 'white', border: 'none', borderRadius: '50%',
-          width: '36px', height: '36px', fontSize: '1rem',
+          width: '38px', height: '38px', fontSize: '1.1rem',
           cursor: 'pointer', color: '#1A6B8A', fontWeight: 'bold',
-          boxShadow: '0 4px 12px rgba(0,0,0,0.1)', zIndex: 10
+          boxShadow: '0 4px 16px rgba(0,0,0,0.12)', zIndex: 10,
+          display: 'flex', alignItems: 'center', justifyContent: 'center',
+          transition: 'all 0.2s ease',
+        }}
+        onMouseEnter={(e) => {
+          e.currentTarget.style.transform = 'scale(1.1)';
+          e.currentTarget.style.boxShadow = '0 6px 20px rgba(74, 159, 191, 0.2)';
+        }}
+        onMouseLeave={(e) => {
+          e.currentTarget.style.transform = 'scale(1)';
+          e.currentTarget.style.boxShadow = '0 4px 16px rgba(0,0,0,0.12)';
         }}>✕</button>
 
         <div style={{

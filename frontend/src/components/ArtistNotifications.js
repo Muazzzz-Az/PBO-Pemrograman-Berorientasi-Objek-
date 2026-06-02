@@ -1,5 +1,6 @@
 // src/components/artist/ArtistNotifications.js
 import React, { useState, useEffect } from 'react';
+import toast from 'react-hot-toast';
 import {
   Box,
   Typography,
@@ -135,7 +136,7 @@ function ArtistNotifications({ artistId, artistName }) {
     localStorage.setItem('user_notifications', JSON.stringify(globalNotifs));
     window.dispatchEvent(new Event('storage'));
 
-    alert(`Request ${newStatus} successfully!`);
+    toast.success(`Request ${newStatus} successfully!`);
     setOpenRequestDialog(false);
   };
 

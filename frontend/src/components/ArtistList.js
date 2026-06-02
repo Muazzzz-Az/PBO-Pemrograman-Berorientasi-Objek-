@@ -269,10 +269,10 @@ function ArtistList() {
             <Grid container spacing={3}>
               {paginatedItems.map((item) => (
                 <Grid item xs={12} sm={6} md={3} key={item.id}>
-                  {/* FIX 2: Ubah routing ke /artist/${item.artistId} */}
+                  {/* FIX 2: Ubah routing ke /artist/${item.artistUsername || item.artistId} */}
                   <Card
                     component={Link}
-                    to={`/artist/${item.artistId}`}
+                    to={`/artist/${item.artistUsername || item.artistId}`}
                     sx={{
                       textDecoration: 'none',
                       bgcolor: '#FFFFFF',
@@ -354,7 +354,7 @@ function ArtistList() {
                       {/* FIX 3: Pastikan tombol ini juga mengarah ke rute /artist yang baru */}
                       <Button
                         component={Link}
-                        to={`/artist/${item.artistId}`}
+                        to={`/artist/${item.artistUsername || item.artistId}`}
                         fullWidth
                         size="small"
                         variant="outlined"

@@ -3,7 +3,7 @@ import React, { useState, useEffect, useCallback } from 'react';
 import {
   Box, Container, Typography, Card, CardContent, Grid, Button,
   Stack, Divider, Avatar, Tabs, Tab, Paper, CircularProgress,
-  Tooltip, IconButton,
+  Tooltip, IconButton, Stepper, Step, StepLabel
 } from '@mui/material';
 import CheckCircleIcon from '@mui/icons-material/CheckCircle';
 import PendingIcon from '@mui/icons-material/Pending';
@@ -79,52 +79,68 @@ const STEP_KEYS = ['pending', 'accepted', 'ongoing', 'completed'];
 
 const ProgressSteps = ({ status }) => {
   const currentIdx = status === 'rejected' ? -1 : STEP_KEYS.indexOf(status);
+
+  if (status === 'rejected') {
+    return (
+      <Typography variant="caption" color="error" sx={{ display: 'block', mt: 2.5, fontWeight: 700 }}>
+        ✕ Request Declined by Artist
+      </Typography>
+    );
+  }
+
   return (
-    <Box sx={{ mt: 2.5 }}>
-      <Box sx={{ display: 'flex', alignItems: 'center' }}>
-        {STEPS.map((step, i) => {
-          const done = i <= currentIdx && currentIdx >= 0;
-          const active = i === currentIdx && currentIdx >= 0;
-          const cfg = STATUS[STEP_KEYS[i]];
+    <Box sx={{ width: '100%', mt: 3, mb: 1 }}>
+      <Stepper activeStep={currentIdx} alternativeLabel sx={{
+        '& .MuiStepConnector-line': {
+          borderTopWidth: '3px',
+          borderRadius: '2px',
+        },
+        '& .MuiStepConnector-root.Mui-active .MuiStepConnector-line': {
+          borderColor: '#4A9FBF',
+        },
+        '& .MuiStepConnector-root.Mui-completed .MuiStepConnector-line': {
+          borderColor: '#10B981',
+        },
+        '& .MuiStepConnector-root .MuiStepConnector-line': {
+          borderColor: '#E2E8F0',
+        }
+      }}>
+        {STEPS.map((label, index) => {
+          const isDone = index <= currentIdx;
+          const isActive = index === currentIdx;
+          const isPastActive = index < currentIdx;
+          
           return (
-            <React.Fragment key={step}>
-              <Tooltip title={step} arrow>
-                <Box sx={{
-                  width: 28, height: 28, borderRadius: '50%',
-                  display: 'flex', alignItems: 'center', justifyContent: 'center',
-                  bgcolor: done ? (active ? cfg?.color || '#4A9FBF' : '#10B981') : '#E2E8F0',
-                  color: done ? '#fff' : '#94A3B8',
-                  fontSize: '0.7rem', fontWeight: 700, flexShrink: 0,
-                  transition: 'all 0.3s',
-                  boxShadow: active ? `0 0 0 3px ${cfg?.color}33` : 'none',
+            <Step key={label} completed={isPastActive}>
+              <StepLabel
+                StepIconProps={{
+                  sx: {
+                    color: isDone ? (isActive ? '#4A9FBF' : '#10B981') : '#E2E8F0',
+                    '&.Mui-active': { color: '#4A9FBF' },
+                    '&.Mui-completed': { color: '#10B981' },
+                    '& .MuiStepIcon-text': {
+                      fill: '#fff',
+                      fontWeight: 700,
+                      fontSize: '0.75rem',
+                    }
+                  }
+                }}
+              >
+                <Typography variant="caption" sx={{
+                  fontWeight: isActive ? 800 : (isDone ? 600 : 500),
+                  color: isActive ? '#1A6B8A' : (isDone ? '#10B981' : '#94A3B8'),
+                  fontSize: '0.75rem',
+                  display: 'block',
+                  textAlign: 'center',
+                  mt: 0.5
                 }}>
-                  {done && !active ? <TaskAltIcon sx={{ fontSize: 14 }} /> : i + 1}
-                </Box>
-              </Tooltip>
-              {i < STEPS.length - 1 && (
-                <Box sx={{
-                  flex: 1, height: 3, borderRadius: 2,
-                  bgcolor: i < currentIdx ? '#10B981' : '#E2E8F0',
-                  transition: 'background 0.4s',
-                }} />
-              )}
-            </React.Fragment>
+                  {label}
+                </Typography>
+              </StepLabel>
+            </Step>
           );
         })}
-      </Box>
-      {status === 'rejected' ? (
-        <Typography variant="caption" color="error" sx={{ display: 'block', mt: 1, fontWeight: 600 }}>
-          ✕ Request Declined by Artist
-        </Typography>
-      ) : (
-        <Stack direction="row" justifyContent="space-between" sx={{ mt: 0.75 }}>
-          {STEPS.map(label => (
-            <Typography key={label} variant="caption" sx={{ fontSize: '0.65rem', color: '#94A3B8', fontWeight: 500 }}>
-              {label}
-            </Typography>
-          ))}
-        </Stack>
-      )}
+      </Stepper>
     </Box>
   );
 };

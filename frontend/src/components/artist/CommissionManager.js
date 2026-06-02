@@ -13,6 +13,7 @@ import {
   MusicNote as MusicIcon
 } from '@mui/icons-material';
 import BaseCard from './BaseCard';
+import toast from 'react-hot-toast';
 
 const COMMISSIONS_KEY = 'creartsi_artist_commissions';
 
@@ -22,6 +23,39 @@ const fileToBase64 = (file) => {
     reader.readAsDataURL(file);
     reader.onload = () => resolve(reader.result);
     reader.onerror = reject;
+  });
+};
+
+const compressImage = (base64Str, maxWidth = 800, maxHeight = 800) => {
+  return new Promise((resolve) => {
+    const img = new Image();
+    img.src = base64Str;
+    img.onload = () => {
+      let width = img.width;
+      let height = img.height;
+
+      if (width > height) {
+        if (width > maxWidth) {
+          height = Math.round((height * maxWidth) / width);
+          width = maxWidth;
+        }
+      } else {
+        if (height > maxHeight) {
+          width = Math.round((width * maxHeight) / height);
+          height = maxHeight;
+        }
+      }
+
+      const canvas = document.createElement('canvas');
+      canvas.width = width;
+      canvas.height = height;
+      const ctx = canvas.getContext('2d');
+      ctx.drawImage(img, 0, 0, width, height);
+      resolve(canvas.toDataURL('image/jpeg', 0.7));
+    };
+    img.onerror = () => {
+      resolve(base64Str);
+    };
   });
 };
 
@@ -39,15 +73,17 @@ const ImageUploadField = ({ label, value, onChange, multiple = false }) => {
         const newImages = [...(value || [])];
         for (const file of files) {
           const base64 = await fileToBase64(file);
-          newImages.push(base64);
+          const compressed = await compressImage(base64);
+          newImages.push(compressed);
         }
         onChange(newImages);
       } else {
         const base64 = await fileToBase64(files[0]);
-        onChange(base64);
+        const compressed = await compressImage(base64);
+        onChange(compressed);
       }
     } catch (error) {
-      alert('Failed to upload image');
+      toast.error('Failed to upload image');
     }
     setLoading(false);
   };
@@ -126,7 +162,7 @@ const AudioUploadField = ({ label, value, onChange }) => {
       const base64 = await fileToBase64(file);
       onChange(base64);
     } catch (error) {
-      alert('Failed to upload audio');
+      toast.error('Failed to upload audio');
     }
     setLoading(false);
   };
@@ -237,7 +273,7 @@ const CommissionManager = () => {
 
   const handleSave = () => {
     if (!formData.title || !formData.category || !formData.priceFrom) {
-      alert('Please fill all required fields');
+      toast.error('Please fill all required fields');
       return;
     }
 
@@ -267,6 +303,7 @@ const CommissionManager = () => {
       saveCommissions(newCommissions);
       setLoading(false);
       setOpenDialog(false);
+      toast.success(editingCommission ? 'Commission package updated successfully!' : 'Commission package published successfully!');
     }, 500);
   };
 
@@ -340,42 +377,36 @@ const CommissionManager = () => {
           <Alert severity="info" sx={{ mb: 3, borderRadius: '8px' }}>Upload your commission package details here</Alert>
 
           <Typography variant="subtitle2" fontWeight={700} color="#1A6B8A" sx={{ mb: 2 }}>Basic Information</Typography>
-          <Grid container spacing={2} sx={{ mb: 4 }}>
-            <Grid item xs={12} md={8}>
-              <TextField fullWidth label="Package Title" value={formData.title} onChange={(e) => setFormData({ ...formData, title: e.target.value })} />
-            </Grid>
-            <Grid item xs={12} md={4}>
-              <FormControl fullWidth>
-                <InputLabel>Category</InputLabel>
-                <Select value={formData.category} onChange={(e) => setFormData({ ...formData, category: e.target.value })} label="Category">
-                  {categories.map(cat => <MenuItem key={cat} value={cat}>{cat}</MenuItem>)}
-                </Select>
-              </FormControl>
-            </Grid>
-            <Grid item xs={12}>
-              <TextField fullWidth label="Description" multiline rows={3} value={formData.description} onChange={(e) => setFormData({ ...formData, description: e.target.value })} />
-            </Grid>
-          </Grid>
+          <Stack spacing={2.5} sx={{ mb: 4 }}>
+            <Stack direction={{ xs: 'column', sm: 'row' }} spacing={2}>
+              <Box sx={{ flex: { xs: 1, sm: 2 } }}>
+                <TextField fullWidth label="Package Title" value={formData.title} onChange={(e) => setFormData({ ...formData, title: e.target.value })} />
+              </Box>
+              <Box sx={{ flex: 1, minWidth: { sm: '200px' } }}>
+                <FormControl fullWidth>
+                  <InputLabel>Category</InputLabel>
+                  <Select value={formData.category} onChange={(e) => setFormData({ ...formData, category: e.target.value })} label="Category">
+                    {categories.map(cat => <MenuItem key={cat} value={cat}>{cat}</MenuItem>)}
+                  </Select>
+                </FormControl>
+              </Box>
+            </Stack>
+            <TextField fullWidth label="Description" multiline rows={3} value={formData.description} onChange={(e) => setFormData({ ...formData, description: e.target.value })} />
+          </Stack>
 
           <Divider sx={{ my: 2 }} />
           <Typography variant="subtitle2" fontWeight={700} color="#1A6B8A" sx={{ mb: 2 }}>Pricing & Timeline</Typography>
-          <Grid container spacing={2} sx={{ mb: 4 }}>
-            <Grid item xs={12} md={6}>
+          <Stack spacing={2.5} sx={{ mb: 4 }}>
+            <Stack direction={{ xs: 'column', sm: 'row' }} spacing={2}>
               <TextField fullWidth label="Starting Price (Rp)" type="number" value={formData.priceFrom} onChange={(e) => setFormData({ ...formData, priceFrom: parseInt(e.target.value) || '' })} InputProps={{ startAdornment: <InputAdornment position="start">Rp</InputAdornment> }} />
-            </Grid>
-            <Grid item xs={12} md={6}>
               <TextField fullWidth label="Max Price (Optional)" type="number" value={formData.priceTo} onChange={(e) => setFormData({ ...formData, priceTo: parseInt(e.target.value) || '' })} InputProps={{ startAdornment: <InputAdornment position="start">Rp</InputAdornment> }} />
-            </Grid>
-            <Grid item xs={12} md={4}>
+            </Stack>
+            <Stack direction={{ xs: 'column', md: 'row' }} spacing={2}>
               <TextField fullWidth label="Turnaround Time" value={formData.turnaround} onChange={(e) => setFormData({ ...formData, turnaround: e.target.value })} placeholder="7-14 days" />
-            </Grid>
-            <Grid item xs={12} md={4}>
               <TextField fullWidth label="Available Slots" type="number" value={formData.slots} onChange={(e) => setFormData({ ...formData, slots: parseInt(e.target.value) || 0 })} />
-            </Grid>
-            <Grid item xs={12} md={4}>
               <TextField fullWidth label="Revisions Included" type="number" value={formData.revisions} onChange={(e) => setFormData({ ...formData, revisions: parseInt(e.target.value) || 0 })} />
-            </Grid>
-          </Grid>
+            </Stack>
+          </Stack>
 
           <Divider sx={{ my: 2 }} />
           <Typography variant="subtitle2" fontWeight={700} color="#1A6B8A" sx={{ mb: 2 }}>Media Upload</Typography>

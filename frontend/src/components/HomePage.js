@@ -15,6 +15,7 @@ import WhatshotIcon from '@mui/icons-material/Whatshot';
 import ShuffleIcon from '@mui/icons-material/Shuffle';
 import AccessTimeIcon from '@mui/icons-material/AccessTime';
 import { cartService, reviewService } from '../services/RealTimeDataService';
+import toast from 'react-hot-toast';
 
 import {
   Palette, Layers, Create, AutoAwesome,
@@ -278,7 +279,7 @@ useEffect(() => {
 const handleSaveToCart = (e, item) => {
   e.stopPropagation();
   if (!currentUser) {
-    alert('Please login first');
+    toast.error('Please login first');
     return;
   }
 
@@ -291,7 +292,7 @@ const handleSaveToCart = (e, item) => {
   };
 
   cartService.addToCart(commissionData, currentUser.id);
-  alert(`Added "${item.title}" to cart!`);
+  toast.success(`Added "${item.title}" to cart!`);
 };
 
 // Di modal, tampilkan rating real
@@ -499,7 +500,10 @@ useEffect(() => {
       <Modal open={Boolean(selectedItem)} onClose={handleCloseModal} sx={{ display: 'flex', alignItems: 'center', justifyContent: 'center', p: 3 }}>
         <Box sx={{ outline: 'none', width: '100%', maxWidth: '1050px' }}>
           {selectedItem && (
-            <Box sx={{ bgcolor: '#FFFFFF', borderRadius: '28px', overflow: 'hidden', display: 'flex', flexDirection: { xs: 'column', md: 'row' }, maxHeight: '90vh' }}>
+            <Box sx={{ position: 'relative', bgcolor: '#FFFFFF', borderRadius: '28px', overflow: 'hidden', display: 'flex', flexDirection: { xs: 'column', md: 'row' }, maxHeight: '90vh' }}>
+              <IconButton onClick={handleCloseModal} sx={{ position: 'absolute', top: 16, right: 16, zIndex: 10, bgcolor: '#FFFFFF', boxShadow: '0 2px 8px rgba(0,0,0,0.1)', '&:hover': { bgcolor: '#F1F5F9' } }}>
+                <CloseIcon />
+              </IconButton>
 
               {/* LEFT SIDE - IMAGE */}
               <Box sx={{ flex: 1.2, bgcolor: '#F8FAFC', overflowY: 'auto' }}>
@@ -507,11 +511,7 @@ useEffect(() => {
               </Box>
 
               {/* RIGHT SIDE - DETAILS */}
-              <Box sx={{ flex: 1, p: 4, overflowY: 'auto', position: 'relative' }}>
-                <IconButton onClick={handleCloseModal} sx={{ position: 'absolute', top: 16, right: 16, bgcolor: '#FFFFFF', boxShadow: '0 2px 8px rgba(0,0,0,0.1)', '&:hover': { bgcolor: '#F1F5F9' } }}>
-                  <CloseIcon />
-                </IconButton>
-
+              <Box sx={{ flex: 1, p: 4, overflowY: 'auto' }}>
                 <Chip label={selectedItem.type === 'commission' ? 'Commission' : 'Portfolio'} size="small" sx={{ bgcolor: selectedItem.type === 'commission' ? '#4A9FBF' : '#8B5CF6', color: 'white', fontWeight: 700, mb: 2 }} />
 
                 <Typography variant="h4" fontWeight={800} sx={{ mb: 2, color: '#1A6B8A' }}>{selectedItem.title}</Typography>

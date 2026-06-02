@@ -21,6 +21,7 @@ import MyPurchasesPage from './components/MyPurchasesPage';
 import ArtistProfilePage from './components/ArtistProfilePage';
 import userService from './services/userService';
 import MyCommissions from './components/artist/MyCommissions';
+import { Toaster } from 'react-hot-toast';
 
 // Admin packages
 import AdminDashboard from './components/admin/AdminDashboard';
@@ -104,31 +105,33 @@ const ArtistRoute = ({ children, isAuthenticated, user }) => {
   return children;
 };
 
+// =============================================
+// KOMPONEN GUEST ROUTE (TIDAK BOLEH DIAKSES JIKA SUDAH LOGIN)
+// =============================================
+const PublicOnlyRoute = ({ children, isAuthenticated }) => {
+  return !isAuthenticated ? children : <Navigate to="/" replace />;
+};
+
 function App() {
-  // ========== HAPUS SEMUA AUTO LOGIN ==========
-  // State awal: selalu false (belum login)
-  const [isAuthenticated, setIsAuthenticated] = useState(false);
-  const [user, setUser] = useState(null);
+  // ========== INITIALIZE STATE SYNCHRONOUSLY ==========
+  const [isAuthenticated, setIsAuthenticated] = useState(() => {
+    return !!localStorage.getItem('token') && !!localStorage.getItem('user');
+  });
+  const [user, setUser] = useState(() => {
+    const savedUser = localStorage.getItem('user');
+    if (savedUser) {
+      try {
+        return JSON.parse(savedUser);
+      } catch (error) {
+        return null;
+      }
+    }
+    return null;
+  });
 
   useEffect(() => {
     // Inisialisasi artist yang hilang
     userService.initializeMissingArtists();
-  }, []);
-
-  // Cek localStorage saat pertama kali load (tanpa bypass apapun)
-  useEffect(() => {
-    const token = localStorage.getItem('token');
-    const savedUser = localStorage.getItem('user');
-
-    if (token && savedUser) {
-      setIsAuthenticated(true);
-      try {
-        let parsedUser = JSON.parse(savedUser);
-        setUser(parsedUser);
-      } catch (error) {
-        console.error("Error parsing user data from localStorage", error);
-      }
-    }
   }, []);
 
   // Fungsi tambahan agar saat user edit profil, local storage ikut ter-update
@@ -140,6 +143,28 @@ function App() {
   return (
     <ThemeProvider theme={pastelOceanTheme}>
       <CssBaseline />
+      <Toaster 
+        position="top-center" 
+        reverseOrder={false}
+        toastOptions={{
+          style: {
+            borderRadius: '16px',
+            background: '#FFFFFF',
+            color: '#1C2833',
+            boxShadow: '0 8px 30px rgba(74, 159, 191, 0.15)',
+            fontFamily: '"Plus Jakarta Sans", sans-serif',
+            fontSize: '0.95rem',
+            padding: '12px 24px',
+            border: '1px solid rgba(74, 159, 191, 0.08)'
+          },
+          success: {
+            iconTheme: {
+              primary: '#4A9FBF',
+              secondary: '#FFFFFF',
+            },
+          },
+        }}
+      />
       <Router>
         <Navbar
           isAuthenticated={isAuthenticated}
@@ -152,8 +177,16 @@ function App() {
           {/* PUBLIC ROUTES (Bisa diakses tanpa login) */}
           {/* ============================================= */}
           <Route path="/" element={<HomePage />} />
-          <Route path="/login" element={<LoginForm setIsAuthenticated={setIsAuthenticated} setUser={setUser} />} />
-          <Route path="/register" element={<RegisterForm />} />
+          <Route path="/login" element={
+            <PublicOnlyRoute isAuthenticated={isAuthenticated}>
+              <LoginForm setIsAuthenticated={setIsAuthenticated} setUser={setUser} />
+            </PublicOnlyRoute>
+          } />
+          <Route path="/register" element={
+            <PublicOnlyRoute isAuthenticated={isAuthenticated}>
+              <RegisterForm />
+            </PublicOnlyRoute>
+          } />
           <Route path="/for-artists" element={<ArtistRegisterForm />} />
           <Route path="/category/:categoryId" element={<CategoryPage />} />
 
@@ -171,14 +204,14 @@ function App() {
             }
           />
 
-          //cart
+          {/* cart */}
           <Route path="/cart" element={
             <PrivateRoute isAuthenticated={isAuthenticated}>
               <CartPage />
             </PrivateRoute>
           } />
 
-          //shop
+          {/* shop */}
            <Route path="/shop" element={<ShopPage />} />
            <Route path="/my-purchases" element={
              <PrivateRoute isAuthenticated={isAuthenticated}>
@@ -186,7 +219,7 @@ function App() {
              </PrivateRoute>
            } />
 
-          //chat
+          {/* chat */}
           <Route
             path="/messages"
             element={

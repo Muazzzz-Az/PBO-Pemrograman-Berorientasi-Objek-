@@ -1,5 +1,6 @@
 // src/components/admin/AdminPostManager.js
 import React, { useState, useEffect } from 'react';
+import toast from 'react-hot-toast';
 import {
   Box, Typography, Card, CardContent, Grid, Button,
   Chip, IconButton, Dialog, DialogTitle, DialogContent,
@@ -67,7 +68,7 @@ function AdminPostManager() {
         localStorage.setItem(PORTFOLIO_KEY, JSON.stringify(updated));
         setPortfolios(updated);
       }
-      alert(`✅ ${type} deleted successfully!`);
+      toast.success(`${type} deleted successfully!`);
       window.dispatchEvent(new Event('storage'));
     }
   };

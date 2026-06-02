@@ -22,6 +22,7 @@ import PaletteIcon from '@mui/icons-material/Palette';
 import AttachMoneyIcon from '@mui/icons-material/AttachMoney';
 import userService from '../services/userService';
 import { cartService } from '../services/RealTimeDataService';
+import toast from 'react-hot-toast';
 
 // ==========================================
 // HELPER FUNCTIONS
@@ -48,6 +49,14 @@ const findArtist = (identifier) => {
   if (!isNaN(asId)) {
     const byId = userService.getUserById(asId);
     if (byId) return byId;
+
+    // Fallback: Cari di commissions apakah ada artistId ini, lalu cari berdasarkan artistName-nya
+    const allCommissions = getArtistCommissions();
+    const matchingComm = allCommissions.find(c => c.artistId === asId);
+    if (matchingComm && matchingComm.artistName) {
+      const byName = userService.getUserByUsername(matchingComm.artistName);
+      if (byName) return byName;
+    }
   }
 
   const byUsername = userService.getUserByUsername(identifier);
@@ -102,7 +111,7 @@ const RequestModal = ({ open, onClose, commission, artist, currentUser }) => {
 
   const handleSubmit = () => {
     if (!requestData.agreeTerms) {
-      alert('Please agree to Terms of Service');
+      toast.error('Please agree to Terms of Service');
       return;
     }
     setSubmitting(true);
@@ -139,9 +148,17 @@ const RequestModal = ({ open, onClose, commission, artist, currentUser }) => {
       });
       localStorage.setItem(`artist_notifications_${artist?.id}`, JSON.stringify(artistNotifs));
 
+      // 🔥 REMOVE FROM CART: Hapus commission ini dari cart/wishlist
+      const cart = JSON.parse(localStorage.getItem('creartsi_cart') || '[]');
+      const updatedCart = cart.filter(item => 
+        !(item.commissionId === commission?.id && item.userId === currentUser.id)
+      );
+      localStorage.setItem('creartsi_cart', JSON.stringify(updatedCart));
+
       window.dispatchEvent(new Event('storage'));
+      window.dispatchEvent(new CustomEvent('cartUpdated'));
       setSubmitting(false);
-      alert('Request submitted!');
+      toast.success('Request submitted!');
       onClose();
     }, 1000);
   };
@@ -206,11 +223,102 @@ function ArtistProfilePage() {
   const [openModal, setOpenModal] = useState(false);
   const currentUser = userService.getCurrentUser();
 
-  const loadData = () => {
+  const loadData = async () => {
     setLoading(true);
 
-    const artistData = findArtist(artistId);
+    let artistData = findArtist(artistId);
     console.log('Looking for:', artistId, 'Found:', artistData);
+
+    if (!artistData) {
+      try {
+        const asId = parseInt(artistId);
+        if (!isNaN(asId)) {
+          const response = await fetch(`http://localhost:8080/api/users/${asId}`);
+          if (response.ok) {
+            const data = await response.json();
+            if (data) {
+              artistData = {
+                id: data.id,
+                username: data.username,
+                email: data.email,
+                fullName: data.fullName,
+                role: data.role || 'artist',
+                isVerified: data.isVerified === true,
+                bio: data.bio || 'Artist on CreartsI',
+                avatarUrl: data.avatarUrl || null,
+                createdAt: data.createdAt || new Date().toISOString()
+              };
+              
+              // Sync to registered_users
+              const registeredUsers = JSON.parse(localStorage.getItem('registered_users') || '[]');
+              if (!registeredUsers.some(u => u.id === artistData.id)) {
+                registeredUsers.push(artistData);
+                localStorage.setItem('registered_users', JSON.stringify(registeredUsers));
+              }
+            }
+          } else {
+            // ID fetch failed, try loading all users and searching by matching name from commissions
+            const allCommissions = getArtistCommissions();
+            const matchingComm = allCommissions.find(c => c.artistId === asId);
+            if (matchingComm && matchingComm.artistName) {
+              const allUsersResponse = await fetch('http://localhost:8080/api/users/all');
+              if (allUsersResponse.ok) {
+                const users = await allUsersResponse.json();
+                const foundUser = users.find(u => u.username === matchingComm.artistName || u.fullName === matchingComm.artistName);
+                if (foundUser) {
+                  artistData = {
+                    id: foundUser.id,
+                    username: foundUser.username,
+                    email: foundUser.email,
+                    fullName: foundUser.fullName,
+                    role: foundUser.role || 'artist',
+                    isVerified: foundUser.isVerified === true,
+                    bio: foundUser.bio || 'Artist on CreartsI',
+                    avatarUrl: foundUser.avatarUrl || null,
+                    createdAt: foundUser.createdAt || new Date().toISOString()
+                  };
+                  
+                  // Sync to registered_users
+                  const registeredUsers = JSON.parse(localStorage.getItem('registered_users') || '[]');
+                  if (!registeredUsers.some(u => u.id === artistData.id)) {
+                    registeredUsers.push(artistData);
+                    localStorage.setItem('registered_users', JSON.stringify(registeredUsers));
+                  }
+                }
+              }
+            }
+          }
+        } else {
+          const response = await fetch('http://localhost:8080/api/users/all');
+          if (response.ok) {
+            const users = await response.json();
+            const foundUser = users.find(u => u.username === artistId || u.fullName === artistId);
+            if (foundUser) {
+              artistData = {
+                id: foundUser.id,
+                username: foundUser.username,
+                email: foundUser.email,
+                fullName: foundUser.fullName,
+                role: foundUser.role || 'artist',
+                isVerified: foundUser.isVerified === true,
+                bio: foundUser.bio || 'Artist on CreartsI',
+                avatarUrl: foundUser.avatarUrl || null,
+                createdAt: foundUser.createdAt || new Date().toISOString()
+              };
+              
+              // Sync to registered_users
+              const registeredUsers = JSON.parse(localStorage.getItem('registered_users') || '[]');
+              if (!registeredUsers.some(u => u.id === artistData.id)) {
+                registeredUsers.push(artistData);
+                localStorage.setItem('registered_users', JSON.stringify(registeredUsers));
+              }
+            }
+          }
+        }
+      } catch (error) {
+        console.error('Error fetching artist from backend:', error);
+      }
+    }
 
     if (artistData) {
       setArtist(artistData);
@@ -247,7 +355,7 @@ function ArtistProfilePage() {
 
   const handleRequest = (commission) => {
     if (!currentUser) {
-      alert('Please login first');
+      toast.error('Please login first');
       navigate('/login');
       return;
     }
@@ -257,7 +365,7 @@ function ArtistProfilePage() {
 
   const handleChat = () => {
     if (!currentUser) {
-      alert('Please login first');
+      toast.error('Please login first');
       navigate('/login');
       return;
     }
@@ -271,7 +379,7 @@ function ArtistProfilePage() {
     e.stopPropagation();
 
     if (!currentUser) {
-      alert('Please login first to add items to cart');
+      toast.error('Please login first to add items to cart');
       navigate('/login');
       return;
     }
@@ -290,7 +398,7 @@ function ArtistProfilePage() {
 
     const result = cartService.addToCart(cartItem, currentUser.id);
     if (result) {
-      alert(`✅ "${commission.title}" added to cart!`);
+      toast.success(`"${commission.title}" added to cart!`);
       window.dispatchEvent(new Event('storage'));
       window.dispatchEvent(new CustomEvent('cartUpdated'));
     }

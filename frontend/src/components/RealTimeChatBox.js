@@ -13,8 +13,9 @@ import ImageIcon from '@mui/icons-material/Image';
 import LinkIcon from '@mui/icons-material/Link';
 import CloseIcon from '@mui/icons-material/Close';
 import DownloadIcon from '@mui/icons-material/Download';
+import ChatIcon from '@mui/icons-material/Chat';
 
-function RealTimeChatBox({ artistId, artistName, currentUser, commissionId, productTitle, productPrice, onMessageRead }) {
+function RealTimeChatBox({ artistId, artistName, currentUser, commissionId, productTitle, productPrice, onMessageRead, height = '550px' }) {
   // ========== SEMUA HOOKS DIATAS (SEBELUM RETURN CONDITIONAL) ==========
   const [message, setMessage] = useState('');
   const [chatLog, setChatLog] = useState([]);
@@ -54,8 +55,14 @@ function RealTimeChatBox({ artistId, artistName, currentUser, commissionId, prod
       (req.status === 'accepted' || req.status === 'ongoing')
     );
 
-    setCanChat(hasAcceptedRequest);
-  }, [validArtistId, validCurrentUserId]);
+    const isArtistOrAdmin = currentUser?.role?.toLowerCase() === 'artist' || currentUser?.role?.toLowerCase() === 'admin';
+
+    if (isArtistOrAdmin) {
+      setCanChat(true);
+    } else {
+      setCanChat(hasAcceptedRequest);
+    }
+  }, [validArtistId, validCurrentUserId, currentUser]);
 
   // File to base64
   const fileToBase64 = (file) => {
@@ -371,7 +378,7 @@ function RealTimeChatBox({ artistId, artistName, currentUser, commissionId, prod
 
   return (
     <>
-      <Paper sx={{ borderRadius: '20px', overflow: 'hidden', height: '550px', display: 'flex', flexDirection: 'column', boxShadow: '0 8px 32px rgba(0,0,0,0.1)' }}>
+      <Paper sx={{ borderRadius: '20px', overflow: 'hidden', height: height, display: 'flex', flexDirection: 'column', boxShadow: '0 8px 32px rgba(74, 159, 191, 0.08)', border: '1px solid rgba(74, 159, 191, 0.12)' }}>
         {/* Header */}
         <Box sx={{ p: 2, bgcolor: '#4A9FBF', color: '#FFFFFF', display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
           <Box display="flex" alignItems="center" gap={2}>
@@ -388,30 +395,44 @@ function RealTimeChatBox({ artistId, artistName, currentUser, commissionId, prod
         </Box>
 
         {/* Chat Area */}
-        <Box sx={{ flex: 1, overflowY: 'auto', p: 2, bgcolor: '#F8FAFC' }}>
+        <Box sx={{
+          flex: 1,
+          overflowY: 'auto',
+          p: 3,
+          bgcolor: '#F8FAFC',
+          // Custom thin scrollbar
+          '&::-webkit-scrollbar': { width: '6px' },
+          '&::-webkit-scrollbar-track': { background: 'transparent' },
+          '&::-webkit-scrollbar-thumb': { background: '#CBD5E1', borderRadius: '10px' },
+          '&::-webkit-scrollbar-thumb:hover': { background: '#94A3B8' }
+        }}>
           {chatLog.length === 0 ? (
-            <Box textAlign="center" py={6}>
-              <Typography variant="body2" color="text.secondary">No messages yet</Typography>
-              <Typography variant="caption" color="text.secondary">Start the conversation with {artistName}!</Typography>
+            <Box sx={{ display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', height: '100%', py: 6, color: '#94A3B8' }}>
+              <ChatIcon sx={{ fontSize: 48, mb: 1, opacity: 0.5 }} />
+              <Typography variant="body2" fontWeight={600}>No messages yet</Typography>
+              <Typography variant="caption">Start the conversation with {artistName}!</Typography>
             </Box>
           ) : (
             chatLog.map((msg, idx) => {
               const isMe = Number(msg.senderId) === validCurrentUserId;
               return (
-                <Box key={`${msg.id}-${idx}`} sx={{ display: 'flex', justifyContent: isMe ? 'flex-end' : 'flex-start', mb: 1.5 }}>
+                <Box key={`${msg.id}-${idx}`} sx={{ display: 'flex', justifyContent: isMe ? 'flex-end' : 'flex-start', mb: 2 }}>
                   <Box sx={{
-                    maxWidth: '80%',
-                    bgcolor: isMe ? '#4A9FBF' : '#FFFFFF',
+                    maxWidth: '75%',
+                    background: isMe ? 'linear-gradient(135deg, #4A9FBF 0%, #1A6B8A 100%)' : '#FFFFFF',
                     color: isMe ? '#FFFFFF' : '#1C2833',
-                    p: 1.5,
-                    borderRadius: isMe ? '16px 16px 4px 16px' : '16px 16px 16px 4px',
-                    boxShadow: '0 2px 4px rgba(0,0,0,0.05)'
+                    p: 2,
+                    borderRadius: isMe ? '20px 20px 4px 20px' : '20px 20px 20px 4px',
+                    boxShadow: isMe ? '0 4px 16px rgba(74, 159, 191, 0.2)' : '0 4px 16px rgba(0,0,0,0.04)',
+                    border: isMe ? 'none' : '1px solid rgba(74, 159, 191, 0.1)',
+                    transition: 'transform 0.2s',
+                    '&:hover': { transform: 'translateY(-1px)' }
                   }}>
-                    <Typography variant="caption" sx={{ display: 'block', mb: 0.5, fontWeight: 'bold', opacity: 0.8 }}>
+                    <Typography variant="caption" sx={{ display: 'block', mb: 0.5, fontWeight: 800, fontSize: '0.72rem', opacity: 0.85, letterSpacing: '0.3px' }}>
                       {isMe ? 'You' : msg.senderName}
                     </Typography>
                     {renderMessage(msg)}
-                    <Typography variant="caption" sx={{ display: 'block', mt: 0.5, textAlign: 'right', fontSize: '0.65rem', opacity: 0.7 }}>
+                    <Typography variant="caption" sx={{ display: 'block', mt: 0.8, textAlign: 'right', fontSize: '0.65rem', opacity: 0.7 }}>
                       {new Date(msg.timestamp).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
                     </Typography>
                   </Box>
@@ -429,15 +450,53 @@ function RealTimeChatBox({ artistId, artistName, currentUser, commissionId, prod
 
         {/* Input Area */}
         <Divider />
-        <Box component="form" onSubmit={handleSendMessage} sx={{ p: 2, bgcolor: '#FFFFFF', display: 'flex', gap: 1, alignItems: 'center' }}>
-          <IconButton onClick={handleAttachClick} sx={{ color: '#4A9FBF' }}>
+        <Box component="form" onSubmit={handleSendMessage} sx={{ p: 2.5, bgcolor: '#FFFFFF', display: 'flex', gap: 1.5, alignItems: 'center' }}>
+          <IconButton onClick={handleAttachClick} sx={{
+            color: '#4A9FBF',
+            bgcolor: 'rgba(74, 159, 191, 0.05)',
+            '&:hover': { bgcolor: 'rgba(74, 159, 191, 0.15)' }
+          }}>
             <AttachFileIcon />
           </IconButton>
-          <TextField fullWidth size="small" placeholder="Type a message..." value={message} onChange={handleTyping}
-            sx={{ '& .MuiOutlinedInput-root': { borderRadius: '40px', bgcolor: '#F8FAFC' } }} />
-          <Button type="submit" variant="contained" disabled={!message.trim()}
-            sx={{ bgcolor: '#4A9FBF', borderRadius: '40px', minWidth: 'auto', px: 3, '&:hover': { bgcolor: '#388EAC' } }}>
-            <SendIcon />
+          <TextField
+            fullWidth
+            size="small"
+            placeholder="Type a message..."
+            value={message}
+            onChange={handleTyping}
+            sx={{
+              '& .MuiOutlinedInput-root': {
+                borderRadius: '30px',
+                bgcolor: '#F8FAFC',
+                px: 2,
+                '& fieldset': { borderColor: '#E2E8F0' },
+                '&:hover fieldset': { borderColor: '#4A9FBF' },
+                '&.Mui-focused fieldset': { borderColor: '#1A6B8A' }
+              }
+            }}
+          />
+          <Button
+            type="submit"
+            variant="contained"
+            disabled={!message.trim()}
+            sx={{
+              background: 'linear-gradient(135deg, #4A9FBF 0%, #1A6B8A 100%)',
+              borderRadius: '30px',
+              minWidth: '50px',
+              height: '40px',
+              boxShadow: '0 4px 12px rgba(74, 159, 191, 0.2)',
+              '&:hover': {
+                background: 'linear-gradient(135deg, #5BAFCF 0%, #2A7B9A 100%)',
+                boxShadow: '0 6px 16px rgba(74, 159, 191, 0.3)'
+              },
+              '&.Mui-disabled': {
+                background: '#E2E8F0',
+                color: '#94A3B8',
+                boxShadow: 'none'
+              }
+            }}
+          >
+            <SendIcon sx={{ fontSize: 18 }} />
           </Button>
         </Box>
       </Paper>

@@ -1,6 +1,6 @@
 // src/components/ProfilePage.js
 import React, { useState, useRef, useEffect } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate, useLocation } from 'react-router-dom';
 import {
   Container,
   Box,
@@ -51,6 +51,7 @@ const formatJoinedDate = (dateString) => {
 
 function ProfilePage({ user, setUser }) {
   const navigate = useNavigate();
+  const location = useLocation();
   const [openEditModal, setOpenEditModal] = useState(false);
   const [activeCreatorTab, setActiveCreatorTab] = useState(0);
   const [showCreatorMode, setShowCreatorMode] = useState(false);
@@ -59,6 +60,16 @@ function ProfilePage({ user, setUser }) {
 
   // ONLY check isVerified === true - NOT role!
   const isVerifiedArtist = user?.isVerified === true;
+
+  // Listen for creator tab query parameter to auto-enable Creator Mode
+  useEffect(() => {
+    const params = new URLSearchParams(location.search);
+    if (params.get('tab') === 'creator' && isVerifiedArtist) {
+      setShowCreatorMode(true);
+    } else {
+      setShowCreatorMode(false);
+    }
+  }, [location.search, isVerifiedArtist]);
 
   // Listen for user updates from other components
   useEffect(() => {

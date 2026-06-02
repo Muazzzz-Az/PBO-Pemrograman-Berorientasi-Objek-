@@ -13,7 +13,7 @@ export const saveTransaction = (transaction) => {
 // Update status transaksi
 export const updateTransactionStatus = (transactionId, status, paymentProof = null) => {
   const transactions = JSON.parse(localStorage.getItem(TRANSACTIONS_KEY) || '[]');
-  const index = transactions.findIndex(t => t.id === transactionId);
+  const index = transactions.findIndex(t => String(t.id) === String(transactionId));
   if (index !== -1) {
     transactions[index] = {
       ...transactions[index],
