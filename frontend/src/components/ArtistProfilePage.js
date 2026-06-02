@@ -65,23 +65,35 @@ const findArtist = (identifier) => {
   return null;
 };
 
-const getArtistAllContent = (artistId, artistName) => {
+const getArtistAllContent = (artistId, artistName, artistUsername) => {
   const artistIdNum = parseInt(artistId);
 
   const allCommissions = getArtistCommissions();
-  const commissions = allCommissions.filter(c =>
-    c.artistId === artistIdNum || c.artistName === artistName
-  );
+  const commissions = allCommissions.filter(c => {
+    // Match by numeric ID
+    if (c.artistId && artistIdNum && Number(c.artistId) === artistIdNum) return true;
+    // Match by fullName
+    if (artistName && c.artistName === artistName) return true;
+    // Match by username
+    if (artistUsername && c.artistName === artistUsername) return true;
+    return false;
+  });
 
   const allPortfolio = getArtistPortfolio();
-  const portfolios = allPortfolio.filter(p =>
-    p.artistId === artistIdNum || p.artistName === artistName
-  );
+  const portfolios = allPortfolio.filter(p => {
+    if (p.artistId && artistIdNum && Number(p.artistId) === artistIdNum) return true;
+    if (artistName && p.artistName === artistName) return true;
+    if (artistUsername && p.artistName === artistUsername) return true;
+    return false;
+  });
 
   const allProducts = getShopProducts();
-  const products = allProducts.filter(p =>
-    p.artistId === artistIdNum || p.artistName === artistName
-  );
+  const products = allProducts.filter(p => {
+    if (p.artistId && artistIdNum && Number(p.artistId) === artistIdNum) return true;
+    if (artistName && p.artistName === artistName) return true;
+    if (artistUsername && p.artistName === artistUsername) return true;
+    return false;
+  });
 
   return { commissions, portfolios, products };
 };
@@ -322,7 +334,18 @@ function ArtistProfilePage() {
 
     if (artistData) {
       setArtist(artistData);
-      const { commissions: comms, portfolios: ports, products: prods } = getArtistAllContent(artistData.id, artistData.fullName);
+      
+      // Debug: log what we're looking for
+      console.log('Artist found:', { id: artistData.id, fullName: artistData.fullName, username: artistData.username });
+      const allComms = JSON.parse(localStorage.getItem('creartsi_artist_commissions') || '[]');
+      console.log('All commissions in storage:', allComms.map(c => ({ id: c.id, artistId: c.artistId, artistName: c.artistName, title: c.title })));
+      
+      const { commissions: comms, portfolios: ports, products: prods } = getArtistAllContent(
+        artistData.id, 
+        artistData.fullName,
+        artistData.username
+      );
+      console.log('Matched commissions:', comms.length, comms);
       setCommissions(comms);
       setPortfolios(ports);
       setProducts(prods);
