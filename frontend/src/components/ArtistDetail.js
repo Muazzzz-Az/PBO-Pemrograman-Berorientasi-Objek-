@@ -45,8 +45,30 @@ const getAllUsers = () => {
 };
 
 // Get full artist data from user storage (for avatar, bio, etc)
-const getFullArtistData = (artistName) => {
-  if (!artistName) return null;
+const getFullArtistData = (artistName, artistId) => {
+  if (!artistName && !artistId) return null;
+
+  const allUsers = getAllUsers();
+
+  // 🔥 Cari berdasarkan ID dulu
+  if (artistId) {
+    const byId = allUsers.find(u => u.id === parseInt(artistId));
+    if (byId) {
+      return {
+        id: byId.id,
+        artistName: byId.fullName,
+        name: byId.fullName,
+        username: byId.username,
+        bio: byId.bio || 'No bio yet',
+        avatarUrl: byId.avatarUrl || null,
+        profilePicture: byId.avatarUrl || 'https://i.pravatar.cc/150?img=1',
+        rating: byId.rating || 5,
+        totalReviews: byId.totalReviews || 0,
+        isVerified: byId.isVerified === true,
+        email: byId.email
+      };
+    }
+  }
 
   // 1. Check current logged in user first
   const currentUser = getCurrentUser();
@@ -86,7 +108,6 @@ const getFullArtistData = (artistName) => {
   }
 
   // 3. Check in all registered users
-  const allUsers = getAllUsers();
   const user = allUsers.find(u => u.fullName === artistName || u.username === artistName);
 
   if (user) {
@@ -197,6 +218,13 @@ function ArtistDetail() {
       return;
     }
 
+    // 🔥 Validasi artist ID
+    if (!artist?.id) {
+      console.error('Artist ID is missing!', artist);
+      showNotification('Error: Artist not found. Please refresh and try again.', 'error');
+      return;
+    }
+
     setSubmitting(true);
     setRequestStep(2);
 
@@ -204,8 +232,8 @@ function ArtistDetail() {
       const newRequest = {
         id: Date.now(),
         commissionId: parseInt(id),
-        artistId: artist?.id,
-        artistName: artist?.artistName,
+        artistId: artist.id,
+        artistName: artist.artistName,
         buyerId: currentUser.id,
         buyerName: currentUser.fullName,
         buyerUsername: currentUser.username,
@@ -224,12 +252,21 @@ function ArtistDetail() {
         createdAt: new Date().toISOString()
       };
 
-      const requests = JSON.parse(localStorage.getItem('commission_requests') || '[]');
+      console.log('🔍 SUBMITTING REQUEST:', newRequest);
+
+      // 🔥 Simpan ke commission_requests (HANYA SEKALI)
+      let requests = JSON.parse(localStorage.getItem('commission_requests') || '[]');
       requests.push(newRequest);
       localStorage.setItem('commission_requests', JSON.stringify(requests));
 
+      // 🔥 Verifikasi setelah save
+      const savedRequests = JSON.parse(localStorage.getItem('commission_requests') || '[]');
+      const lastRequest = savedRequests[savedRequests.length - 1];
+      console.log('✅ Saved request:', lastRequest);
+      console.log('✅ Artist ID match:', lastRequest.artistId === artist.id);
+
       // Send notification to artist
-      const artistNotifs = JSON.parse(localStorage.getItem(`artist_notifications_${artist?.id}`) || '[]');
+      const artistNotifs = JSON.parse(localStorage.getItem(`artist_notifications_${artist.id}`) || '[]');
       artistNotifs.unshift({
         id: Date.now(),
         type: 'NEW_COMMISSION_REQUEST',
@@ -244,7 +281,7 @@ function ArtistDetail() {
         timestamp: new Date().toISOString(),
         timeAgo: new Date().toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit' })
       });
-      localStorage.setItem(`artist_notifications_${artist?.id}`, JSON.stringify(artistNotifs));
+      localStorage.setItem(`artist_notifications_${artist.id}`, JSON.stringify(artistNotifs));
 
       // Also add to global notifications
       const globalNotifications = JSON.parse(localStorage.getItem('user_notifications') || '[]');
@@ -299,15 +336,15 @@ function ArtistDetail() {
       if (foundCommission) {
         setCommission(foundCommission);
 
-        // Get REAL artist data based on artistName from commission
         const artistName = foundCommission.artistName;
-        const fullArtistData = getFullArtistData(artistName);
+        const artistId = foundCommission.artistId;
+        const fullArtistData = getFullArtistData(artistName, artistId);
 
         if (fullArtistData) {
           console.log('Artist data loaded:', fullArtistData);
+          console.log('🔥 Artist ID for request:', fullArtistData.id);
           setArtist(fullArtistData);
         } else {
-          // Fallback: create artist data from commission
           setArtist({
             id: foundCommission.artistId || Date.now(),
             artistName: foundCommission.artistName || 'Artist',
@@ -549,25 +586,6 @@ function ArtistDetail() {
                       }}
                     >
                       {commission.isOpen ? 'Request Commission' : 'Commission Closed'}
-                    </Button>
-                  </Tooltip>
-                  <Tooltip title="Chat with the artist" arrow>
-                    <Button
-                      variant="outlined"
-                      startIcon={<ChatIcon />}
-                      onClick={() => setOpenChat(true)}
-                      sx={{
-                        borderRadius: '50px',
-                        px: 4,
-                        py: 1.5,
-                        textTransform: 'none',
-                        fontWeight: 600,
-                        borderColor: '#4A9FBF',
-                        color: '#4A9FBF',
-                        '&:hover': { borderColor: '#1A6B8A', bgcolor: 'rgba(74, 159, 191, 0.05)' }
-                      }}
-                    >
-                      Chat
                     </Button>
                   </Tooltip>
                 </Stack>

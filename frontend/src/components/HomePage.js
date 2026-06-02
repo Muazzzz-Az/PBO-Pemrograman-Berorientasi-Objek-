@@ -551,22 +551,12 @@ useEffect(() => {
                 <Stack direction="row" spacing={2}>
                   <Button
                     component={Link}
-                    to={selectedItem.type === 'commission' ? `/artists/${selectedItem.id}` : '#'}
+                    to={`/artist/${selectedItem.artistName}`}  // ← Kirim USERNAME, bukan ID
                     fullWidth
                     variant="contained"
-                    disabled={selectedItem.type !== 'commission'}
-                    sx={{ bgcolor: '#4A9FBF', borderRadius: '50px', py: 1.8, textTransform: 'none', fontWeight: 700, fontSize: '1rem', '&:hover': { bgcolor: '#1A6B8A' }, '&.Mui-disabled': { bgcolor: '#CBD5E1', color: '#FFFFFF' } }}
+                    sx={{ bgcolor: '#4A9FBF', borderRadius: '50px', py: 1.8, textTransform: 'none', fontWeight: 700 }}
                   >
-                    {selectedItem.type === 'commission' ? 'Request Commission' : 'Portfolio Only'}
-                  </Button>
-                  <Button
-                    component={Link}
-                    to={selectedItem.type === 'commission' ? `/artists/${selectedItem.id}` : '#'}
-                    variant="outlined"
-                    startIcon={<ChatIcon />}
-                    sx={{ borderRadius: '50px', px: 3, textTransform: 'none', fontWeight: 600, borderColor: '#4A9FBF', color: '#4A9FBF', '&:hover': { bgcolor: 'rgba(74,159,191,0.05)', borderColor: '#1A6B8A' } }}
-                  >
-                    Chat
+                    View Artist Profile
                   </Button>
                 </Stack>
               </Box>

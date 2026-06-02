@@ -7,75 +7,96 @@ class ChatService {
     this.isConnected = false;
     this._messageListeners = [];
     this._typingListeners = [];
+    this.reconnectAttempts = 0;
   }
 
   connect() {
-    if (this.socket && this.socket.connected) return;
+    if (this.socket && this.socket.connected) {
+      console.log('Already connected');
+      return;
+    }
 
-    // WAJIB PORT 8085 agar menyambung ke mesin SocketIO di Java
+    console.log('Connecting to chat server on port 8085...');
+
     this.socket = io('http://localhost:8085', {
-      transports: ['websocket'],
-      upgrade: false,
-      reconnection: true
+      transports: ['websocket', 'polling'], // polling sebagai fallback
+      upgrade: true,
+      reconnection: true,
+      reconnectionAttempts: 10,
+      reconnectionDelay: 1000,
+      timeout: 10000
     });
 
     this.socket.on('connect', () => {
-      console.log('✅ Berhasil terhubung ke Server Chat (Port 8085)');
+      console.log('✅ Connected to Chat Server (Port 8085)');
       this.isConnected = true;
+      this.reconnectAttempts = 0;
     });
 
-    this.socket.on('disconnect', () => {
-      console.log('❌ Koneksi Chat terputus');
+    this.socket.on('connect_error', (error) => {
+      console.error('❌ Connection error:', error.message);
       this.isConnected = false;
     });
 
-    // Mendengarkan pesan masuk dari server
-    this.socket.on('receive_message', (data) => {
-      this._messageListeners.forEach(fn => fn(data));
+    this.socket.on('disconnect', (reason) => {
+      console.log('❌ Disconnected:', reason);
+      this.isConnected = false;
     });
 
-    // Mendengarkan status mengetik
-    this.socket.on('user_typing', (data) => {
-      this._typingListeners.forEach(fn => fn(data));
+    this.socket.on('reconnect', (attemptNumber) => {
+      console.log(`🔄 Reconnected after ${attemptNumber} attempts`);
+      this.isConnected = true;
     });
   }
 
   joinRoom(roomId) {
-      if (this.socket && this.socket.connected) {
-        this.socket.emit('join_chat', roomId);
-      }
-   }
+    if (this.socket && this.socket.connected) {
+      this.socket.emit('join_chat', roomId);
+      console.log(`Joined room: ${roomId}`);
+    } else {
+      console.log('Cannot join room: not connected');
+    }
+  }
 
   leaveRoom(roomId) {
     if (this.socket && this.socket.connected) {
-        this.socket.emit('leave_chat', roomId);
+      this.socket.emit('leave_chat', roomId);
     }
   }
 
   sendTyping(roomId, isTyping, senderName) {
     if (this.socket && this.socket.connected) {
-        this.socket.emit('typing', { roomId, isTyping, senderName });
+      this.socket.emit('typing', { roomId, isTyping, senderName });
     }
   }
 
   sendMessage(messageData) {
-      if (this.socket && this.socket.connected) {
-        this.socket.emit('send_message', messageData);
-      }
+    if (this.socket && this.socket.connected) {
+      this.socket.emit('send_message', messageData);
+    } else {
+      console.log('Cannot send message: not connected');
+    }
   }
 
   onMessage(callback) {
     this._messageListeners.push(callback);
+    if (this.socket) {
+      this.socket.on('receive_message', callback);
+    }
   }
 
   onTyping(callback) {
     this._typingListeners.push(callback);
+    if (this.socket) {
+      this.socket.on('user_typing', callback);
+    }
   }
 
   disconnect() {
     if (this.socket) {
       this.socket.disconnect();
       this.socket = null;
+      this.isConnected = false;
     }
   }
 }

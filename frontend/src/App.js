@@ -19,6 +19,8 @@ import CartPage from './components/CartPage';
 import ShopPage from './components/ShopPage';
 import MyPurchasesPage from './components/MyPurchasesPage';
 import ArtistProfilePage from './components/ArtistProfilePage';
+import userService from './services/userService';
+import MyCommissions from './components/artist/MyCommissions';
 
 // Admin packages
 import AdminDashboard from './components/admin/AdminDashboard';
@@ -108,6 +110,11 @@ function App() {
   const [isAuthenticated, setIsAuthenticated] = useState(false);
   const [user, setUser] = useState(null);
 
+  useEffect(() => {
+    // Inisialisasi artist yang hilang
+    userService.initializeMissingArtists();
+  }, []);
+
   // Cek localStorage saat pertama kali load (tanpa bypass apapun)
   useEffect(() => {
     const token = localStorage.getItem('token');
@@ -185,6 +192,17 @@ function App() {
             element={
               <PrivateRoute isAuthenticated={isAuthenticated}>
                 <MessagesPage user={user} />
+              </PrivateRoute>
+            }
+          />
+
+          <Route
+            path="/my-commissions"
+            element={
+              <PrivateRoute isAuthenticated={isAuthenticated}>
+                <ArtistRoute isAuthenticated={isAuthenticated} user={user}>
+                  <MyCommissions />
+                </ArtistRoute>
               </PrivateRoute>
             }
           />

@@ -3,15 +3,15 @@ import React, { useState, useEffect } from 'react';
 import { useNavigate, Link } from 'react-router-dom';
 import {
   Box, Container, Typography, Card, CardContent, Grid,
-  Button, IconButton, Stack, Divider, Paper
+  Button, IconButton, Stack, Divider, Paper, Avatar
 } from '@mui/material';
 import DeleteIcon from '@mui/icons-material/Delete';
 import AddIcon from '@mui/icons-material/Add';
 import RemoveIcon from '@mui/icons-material/Remove';
 import ShoppingCartIcon from '@mui/icons-material/ShoppingCart';
+import ChatIcon from '@mui/icons-material/Chat';
+import ShoppingBagIcon from '@mui/icons-material/ShoppingBag';
 import { cartService } from '../services/RealTimeDataService';
-// FIX 1: Import fungsi yang BENAR dari PaymentService
-import { saveTransaction, generatePaymentCode } from '../services/PaymentService'; 
 
 function CartPage() {
   const navigate = useNavigate();
@@ -45,46 +45,15 @@ function CartPage() {
     loadCart();
   };
 
-  // FIX 2: Engine Checkout yang disesuaikan dengan arsitektur PaymentService
-  const handleCheckout = () => {
-    try {
-      if (cartItems.length === 0) return;
-
-      // Loop semua barang di keranjang dan simpan sebagai Transaksi
-      cartItems.forEach(item => {
-        const transactionData = {
-          id: Date.now() + Math.random().toString().substring(2, 6), // Generate ID Unik
-          transactionCode: generatePaymentCode(), // Generate Nomor Resi
-          userId: currentUser.id,
-          userName: currentUser.fullName || currentUser.username,
-          productId: item.commissionId || item.id,
-          productTitle: item.title,
-          productPrice: item.price * item.quantity, 
-          artistId: item.artistId || null,
-          artistName: item.artistName,
-          quantity: item.quantity,
-          status: 'waiting_payment', // Status Default Belum Bayar
-          createdAt: new Date().toISOString(),
-          productFile: item.productFile || null 
-        };
-
-        // Simpan menggunakan fungsi asli buatan tim Anda
-        saveTransaction(transactionData);
-      });
-
-      // Bersihkan keranjang
-      cartService.clearCart(currentUser.id);
-      
-      alert("Checkout Successful! Redirecting to your purchases...");
-      navigate('/my-purchases');
-      
-    } catch (error) {
-      console.error("Checkout Failed:", error);
-      alert("Terjadi kesalahan saat memproses checkout. Silakan coba lagi.");
-    }
+  // Fungsi Request Commission - langsung ke artist profile
+  const handleRequest = (item) => {
+    navigate(`/artist/${item.artistName || item.artistId}`);
   };
 
-  const total = cartItems.reduce((sum, item) => sum + (item.price * item.quantity), 0);
+  // Fungsi Chat dengan artist
+  const handleChat = (item) => {
+    navigate(`/messages?userId=${item.artistId}&productId=${item.commissionId}&productTitle=${encodeURIComponent(item.title)}`);
+  };
 
   if (cartItems.length === 0) {
     return (
@@ -93,13 +62,13 @@ function CartPage() {
           <ShoppingCartIcon sx={{ fontSize: 64, color: '#CBD5E1', mb: 2 }} />
           <Typography variant="h5" sx={{ color: '#1A6B8A', mb: 1 }}>Your cart is empty</Typography>
           <Typography variant="body2" color="text.secondary" sx={{ mb: 3 }}>
-            Add some commissions to get started
+            Add some commissions you like to your wishlist!
           </Typography>
           <Button
             variant="contained"
             component={Link}
             to="/artists"
-            sx={{ bgcolor: '#4A9FBF', borderRadius: '40px' }}
+            sx={{ bgcolor: '#4A9FBF', borderRadius: '40px', textTransform: 'none' }}
           >
             Browse Commissions
           </Button>
@@ -112,7 +81,7 @@ function CartPage() {
     <Box sx={{ minHeight: '100vh', bgcolor: '#F0F9FF', py: 4 }}>
       <Container maxWidth="lg">
         <Typography variant="h4" sx={{ fontWeight: 800, color: '#1A6B8A', mb: 4 }}>
-          🛍️ My Cart ({cartItems.length})
+          My Chart Wishlist ({cartItems.length})
         </Typography>
 
         <Grid container spacing={4}>
@@ -128,13 +97,18 @@ function CartPage() {
                         style={{ width: '100%', height: '80px', objectFit: 'cover', borderRadius: '8px' }}
                       />
                     </Grid>
-                    <Grid item xs={6} sm={5}>
+                    <Grid item xs={6} sm={4}>
                       <Typography variant="subtitle1" fontWeight={700}>{item.title}</Typography>
-                      <Typography variant="caption" sx={{ color: '#4A9FBF' }}>{item.artistName}</Typography>
+                      <Stack direction="row" alignItems="center" spacing={1}>
+                        <Avatar sx={{ width: 20, height: 20, bgcolor: '#4A9FBF', fontSize: '0.7rem' }}>
+                          {item.artistName?.charAt(0)}
+                        </Avatar>
+                        <Typography variant="caption" sx={{ color: '#4A9FBF' }}>{item.artistName}</Typography>
+                      </Stack>
                     </Grid>
                     <Grid item xs={3} sm={2}>
                       <Typography variant="h6" fontWeight={800} sx={{ color: '#1A6B8A' }}>
-                        Rp {item.price.toLocaleString('id-ID')}
+                        Rp {item.price?.toLocaleString('id-ID')}
                       </Typography>
                     </Grid>
                     <Grid item xs={6} sm={2}>
@@ -148,44 +122,90 @@ function CartPage() {
                         </IconButton>
                       </Stack>
                     </Grid>
-                    <Grid item xs={6} sm={1}>
+                    <Grid item xs={6} sm={2}>
                       <IconButton onClick={() => handleRemoveItem(item.id)} color="error">
                         <DeleteIcon />
                       </IconButton>
                     </Grid>
                   </Grid>
+
+                  {/* Tombol Aksi: Request dan Chat */}
+                  <Divider sx={{ my: 2 }} />
+                  <Stack direction="row" spacing={2}>
+                    <Button
+                      variant="contained"
+                      startIcon={<ShoppingBagIcon />}
+                      onClick={() => handleRequest(item)}
+                      sx={{
+                        bgcolor: '#4A9FBF',
+                        borderRadius: '30px',
+                        textTransform: 'none',
+                        flex: 1,
+                        '&:hover': { bgcolor: '#1A6B8A' }
+                      }}
+                    >
+                      Request Commission
+                    </Button>
+                    <Button
+                      variant="outlined"
+                      startIcon={<ChatIcon />}
+                      onClick={() => handleChat(item)}
+                      sx={{
+                        borderRadius: '30px',
+                        textTransform: 'none',
+                        borderColor: '#4A9FBF',
+                        color: '#4A9FBF',
+                        flex: 1,
+                        '&:hover': { bgcolor: 'rgba(74, 159, 191, 0.05)' }
+                      }}
+                    >
+                      Chat with Artist
+                    </Button>
+                  </Stack>
                 </CardContent>
               </Card>
             ))}
           </Grid>
 
+          {/* Sidebar Summary - Hanya info, bukan checkout */}
           <Grid item xs={12} md={4}>
             <Card sx={{ borderRadius: '16px', position: 'sticky', top: 20 }}>
               <CardContent>
-                <Typography variant="h6" fontWeight={800} sx={{ mb: 2 }}>Order Summary</Typography>
+                <Typography variant="h6" fontWeight={800} sx={{ mb: 2, color: '#1A6B8A' }}>
+                  Wishlist Summary
+                </Typography>
                 <Divider sx={{ mb: 2 }} />
+
                 <Box display="flex" justifyContent="space-between" sx={{ mb: 1 }}>
-                  <Typography>Subtotal ({cartItems.length} items)</Typography>
-                  <Typography fontWeight={600}>Rp {total.toLocaleString('id-ID')}</Typography>
+                  <Typography>Items in wishlist</Typography>
+                  <Typography fontWeight={600}>{cartItems.length} item(s)</Typography>
                 </Box>
-                <Box display="flex" justifyContent="space-between" sx={{ mb: 2 }}>
-                  <Typography>Platform Fee (5%)</Typography>
-                  <Typography fontWeight={600}>Rp {(total * 0.05).toLocaleString('id-ID')}</Typography>
-                </Box>
-                <Divider sx={{ my: 2 }} />
-                <Box display="flex" justifyContent="space-between" sx={{ mb: 3 }}>
-                  <Typography variant="h6" fontWeight={800}>Total</Typography>
-                  <Typography variant="h5" fontWeight={800} sx={{ color: '#1A6B8A' }}>
-                    Rp {(total * 1.05).toLocaleString('id-ID')}
+
+                <Box display="flex" justifyContent="space-between" sx={{ mb: 1 }}>
+                  <Typography>Total value</Typography>
+                  <Typography fontWeight={800} color="#1A6B8A">
+                    Rp {cartItems.reduce((sum, item) => sum + (item.price * item.quantity), 0).toLocaleString('id-ID')}
                   </Typography>
                 </Box>
+
+                <Divider sx={{ my: 2 }} />
+
+                <Typography variant="caption" color="text.secondary" sx={{ display: 'block', textAlign: 'center' }}>
+                  This is your chart wishlist.
+                  <br />
+                  Click "Request Commission" to discuss with artist,
+                  <br />
+                  or "Chat with Artist" to negotiate prices.
+                </Typography>
+
                 <Button
                   fullWidth
-                  variant="contained"
-                  onClick={handleCheckout}
-                  sx={{ bgcolor: '#4A9FBF', py: 1.5, borderRadius: '40px' }}
+                  variant="outlined"
+                  component={Link}
+                  to="/artists"
+                  sx={{ mt: 3, borderRadius: '30px', textTransform: 'none', borderColor: '#4A9FBF', color: '#4A9FBF' }}
                 >
-                  Proceed to Checkout
+                  Browse More Commissions
                 </Button>
               </CardContent>
             </Card>

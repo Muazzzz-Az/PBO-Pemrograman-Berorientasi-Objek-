@@ -3,12 +3,33 @@ import React, { useState, useEffect } from 'react';
 import { useNavigate, useLocation } from 'react-router-dom';
 import {
   Container, Box, Typography, Card, Avatar, List, ListItem, ListItemAvatar,
-  ListItemText, Divider, TextField, IconButton, Badge, InputAdornment, Paper, Button
+  ListItemText, Divider, TextField, Badge, InputAdornment, Paper, Button
 } from '@mui/material';
 import SearchIcon from '@mui/icons-material/Search';
 import ChatIcon from '@mui/icons-material/Chat';
 import ArrowBackIcon from '@mui/icons-material/ArrowBack';
 import RealTimeChatBox from './RealTimeChatBox';
+import userService from '../services/userService';
+
+// Fungsi untuk mark as read
+const markMessagesAsRead = (roomId, currentUserId) => {
+  const key = `chat_${roomId}`;
+  const messages = JSON.parse(localStorage.getItem(key) || '[]');
+  let updated = false;
+
+  const newMessages = messages.map(msg => {
+    if (msg.receiverId === currentUserId && !msg.isRead) {
+      updated = true;
+      return { ...msg, isRead: true };
+    }
+    return msg;
+  });
+
+  if (updated) {
+    localStorage.setItem(key, JSON.stringify(newMessages));
+    window.dispatchEvent(new Event('storage'));
+  }
+};
 
 function MessagesPage({ user }) {
   const navigate = useNavigate();
@@ -18,12 +39,18 @@ function MessagesPage({ user }) {
   const [selectedChat, setSelectedChat] = useState(null);
   const currentUser = user || JSON.parse(localStorage.getItem('user'));
 
-  // Ambil parameter dari URL (jika dari klik product)
   const queryParams = new URLSearchParams(location.search);
   const targetUserId = queryParams.get('userId');
   const productId = queryParams.get('productId');
   const productTitle = queryParams.get('productTitle');
   const productPrice = queryParams.get('productPrice');
+
+  // Hitung unread count
+  const getUnreadCount = (roomId) => {
+    const key = `chat_${roomId}`;
+    const messages = JSON.parse(localStorage.getItem(key) || '[]');
+    return messages.filter(m => m.receiverId === currentUser?.id && !m.isRead).length;
+  };
 
   useEffect(() => {
     if (!currentUser) {
@@ -31,101 +58,124 @@ function MessagesPage({ user }) {
       return;
     }
 
-    const fetchConversations = async () => {
-      try {
-        // FIX 1: Tarik semua chat dari Database, BUKAN dari localStorage
-        const res = await fetch('http://localhost:8080/api/chat');
-        if (!res.ok) throw new Error("Gagal mengambil data dari server");
-        const allMessages = await res.json();
+    // HANYA SATU FUNGSI fetchConversations
+    const fetchConversations = () => {
+      const allMessages = [];
 
-        const chatRooms = new Map();
-        const allUsers = JSON.parse(localStorage.getItem('registered_users') || '[]');
-
-        // Filter pesan yang HANYA melibatkan user yang sedang login
-        const myMessages = allMessages.filter(m =>
-          Number(m.senderId) === currentUser.id || Number(m.receiverId) === currentUser.id
-        );
-
-        // Grouping berdasarkan roomId
-        myMessages.forEach(msg => {
-          const roomKey = msg.roomId; // Format: room_1_2
-          // Ekstrak ID dari string room_1_2 yang valid
-          const ids = roomKey.replace('room_', '').split('_');
-          const user1 = parseInt(ids[0]);
-          const user2 = parseInt(ids[1]);
-
-          // Cari tahu mana ID lawan bicara (bukan ID kita sendiri)
-          const otherId = (user1 === currentUser.id) ? user2 : user1;
-
-          if (!chatRooms.has(roomKey) || new Date(msg.timestamp) > new Date(chatRooms.get(roomKey).lastMessage.timestamp)) {
-            // Cari nama lawan bicara untuk ditampilkan di inbox
-            const otherUser = allUsers.find(u => u.id === otherId);
-            const otherName = otherUser?.fullName || otherUser?.username || `User ${otherId}`;
-
-            // Hitung unread (pesan di mana kita adalah receiver dan belum dibaca)
-            const unreadCount = myMessages.filter(m => m.roomId === roomKey && m.receiverId === currentUser.id && !m.isRead).length;
-
-            chatRooms.set(roomKey, {
-              roomKey: roomKey,
-              otherId: otherId,
-              otherName: otherName,
-              lastMessage: msg,
-              unreadCount: unreadCount
-            });
-          }
-        });
-
-        // Urutkan dari chat terbaru ke terlama
-        const sortedConversations = Array.from(chatRooms.values()).sort(
-          (a, b) => new Date(b.lastMessage.timestamp) - new Date(a.lastMessage.timestamp)
-        );
-
-        setConversations(sortedConversations);
-      } catch (error) {
-        console.error("Error fetching conversations:", error);
+      for (let i = 0; i < localStorage.length; i++) {
+        const key = localStorage.key(i);
+        if (key && key.startsWith('chat_')) {
+          const messages = JSON.parse(localStorage.getItem(key) || '[]');
+          allMessages.push(...messages);
+        }
       }
+
+      const chatRooms = new Map();
+      const allUsers = userService.getAllRegisteredUsers();
+
+      const myMessages = allMessages.filter(m =>
+        Number(m.senderId) === currentUser.id || Number(m.receiverId) === currentUser.id
+      );
+
+      myMessages.forEach(msg => {
+        const roomKey = msg.roomId;
+        if (!roomKey) return;
+
+        const ids = roomKey.replace('room_', '').split('_');
+        const user1 = parseInt(ids[0]);
+        const user2 = parseInt(ids[1]);
+        const otherId = (user1 === currentUser.id) ? user2 : user1;
+
+        // CARI NAMA DARI DATABASE
+        const otherUser = allUsers.find(u => u.id === otherId);
+        let otherName = otherUser?.fullName || otherUser?.username;
+
+        // Jika masih tidak ada, gunakan nama dari pesan
+        if (!otherName) {
+          const msgFromOther = myMessages.find(m => m.senderId === otherId);
+          otherName = msgFromOther?.senderName || `User ${otherId}`;
+        }
+
+        const otherAvatar = otherUser?.avatarUrl || null;
+
+        if (!chatRooms.has(roomKey) || new Date(msg.timestamp) > new Date(chatRooms.get(roomKey).lastMessage.timestamp)) {
+          const unreadCount = myMessages.filter(m => m.roomId === roomKey && m.receiverId === currentUser.id && !m.isRead).length;
+
+          chatRooms.set(roomKey, {
+            roomKey: roomKey,
+            otherId: otherId,
+            otherName: otherName,
+            otherAvatar: otherAvatar,
+            lastMessage: msg,
+            unreadCount: unreadCount
+          });
+        }
+      });
+
+      const sortedConversations = Array.from(chatRooms.values()).sort(
+        (a, b) => new Date(b.lastMessage.timestamp) - new Date(a.lastMessage.timestamp)
+      );
+
+      setConversations(sortedConversations);
     };
 
     fetchConversations();
-    
-    // Polling ringan tiap 3 detik agar inbox terupdate otomatis
-    const intervalId = setInterval(fetchConversations, 3000);
 
-    // Auto-select chat jika ada targetUserId dari URL
+    const intervalId = setInterval(fetchConversations, 2000);
+
     if (targetUserId && !selectedChat) {
       const targetId = parseInt(targetUserId);
-      const allUsers = JSON.parse(localStorage.getItem('registered_users') || '[]');
+      const allUsers = userService.getAllRegisteredUsers();
       const targetUser = allUsers.find(u => u.id === targetId);
       const targetName = targetUser?.fullName || targetUser?.username || `Artist ${targetId}`;
 
       const roomKey = `room_${Math.min(currentUser.id, targetId)}_${Math.max(currentUser.id, targetId)}`;
+
+      markMessagesAsRead(roomKey, currentUser.id);
+
       setSelectedChat({
         roomKey: roomKey,
         otherId: targetId,
-        otherName: targetName
+        otherName: targetName,
+        otherAvatar: targetUser?.avatarUrl
       });
     }
 
     return () => clearInterval(intervalId);
   }, [currentUser, navigate, targetUserId, selectedChat]);
 
+  const handleSelectChat = (conv) => {
+    markMessagesAsRead(conv.roomKey, currentUser.id);
+    setSelectedChat(conv);
+  };
+
+  const handleBackToList = () => {
+    setSelectedChat(null);
+    window.dispatchEvent(new Event('storage'));
+  };
+
   const filtered = conversations.filter(c =>
     c.otherName.toLowerCase().includes(searchTerm.toLowerCase())
   );
 
-  // Jika ada selectedChat, render komponen RealTimeChatBox
+  // Halaman Chat
   if (selectedChat) {
     return (
       <Box sx={{ minHeight: '100vh', bgcolor: '#F0F9FF', py: 4 }}>
         <Container maxWidth="md">
           <Button
-            onClick={() => setSelectedChat(null)}
+            onClick={handleBackToList}
             startIcon={<ArrowBackIcon />}
-            sx={{ mb: 2, color: '#4A9FBF', textTransform: 'none' }}
+            sx={{
+              mb: 2,
+              color: '#4A9FBF',
+              textTransform: 'none',
+              fontWeight: 600,
+              '&:hover': { bgcolor: 'rgba(74, 159, 191, 0.05)' }
+            }}
           >
-            Back to conversations
+            ← Back to conversations
           </Button>
-          {/* FIX 2: Lempar otherId dan otherName yang akurat ke ChatBox */}
           <RealTimeChatBox
             artistId={selectedChat.otherId}
             artistName={selectedChat.otherName}
@@ -133,12 +183,16 @@ function MessagesPage({ user }) {
             commissionId={productId}
             productTitle={productTitle}
             productPrice={productPrice}
+            onMessageRead={() => {
+              markMessagesAsRead(selectedChat.roomKey, currentUser.id);
+            }}
           />
         </Container>
       </Box>
     );
   }
 
+  // Halaman Daftar Chat
   return (
     <Box sx={{ minHeight: '100vh', bgcolor: '#F0F9FF', py: 4 }}>
       <Container maxWidth="md">
@@ -170,35 +224,55 @@ function MessagesPage({ user }) {
                 </Typography>
               </Box>
             ) : (
-              filtered.map((conv, idx) => (
-                <React.Fragment key={conv.roomKey}>
-                  <ListItem
-                    button
-                    onClick={() => setSelectedChat(conv)}
-                    sx={{ '&:hover': { bgcolor: '#F0F9FF' } }}
-                  >
-                    <ListItemAvatar>
-                      <Avatar sx={{ bgcolor: '#4A9FBF' }}>
-                        {conv.otherName.charAt(0).toUpperCase()}
-                      </Avatar>
-                    </ListItemAvatar>
-                    <ListItemText
-                      primary={
-                        <Box display="flex" justifyContent="space-between">
-                          <Typography fontWeight={conv.unreadCount > 0 ? 700 : 500}>
-                            {conv.otherName}
+              filtered.map((conv, idx) => {
+                const unreadCount = getUnreadCount(conv.roomKey);
+                return (
+                  <React.Fragment key={conv.roomKey}>
+                    <ListItem
+                      button
+                      onClick={() => handleSelectChat(conv)}
+                      sx={{
+                        '&:hover': { bgcolor: '#F0F9FF' },
+                        bgcolor: unreadCount > 0 ? 'rgba(74, 159, 191, 0.05)' : 'transparent'
+                      }}
+                    >
+                      <ListItemAvatar>
+                        <Avatar src={conv.otherAvatar} sx={{ bgcolor: '#4A9FBF' }}>
+                          {conv.otherName?.charAt(0).toUpperCase()}
+                        </Avatar>
+                      </ListItemAvatar>
+                      <ListItemText
+                        primary={
+                          <Box display="flex" justifyContent="space-between">
+                            <Typography fontWeight={unreadCount > 0 ? 700 : 500}>
+                              {conv.otherName}
+                            </Typography>
+                            {unreadCount > 0 && (
+                              <Badge
+                                badgeContent={unreadCount}
+                                color="error"
+                                sx={{
+                                  '& .MuiBadge-badge': {
+                                    fontSize: '0.7rem',
+                                    height: 18,
+                                    minWidth: 18
+                                  }
+                                }}
+                              />
+                            )}
+                          </Box>
+                        }
+                        secondary={
+                          <Typography variant="caption" color="text.secondary" noWrap>
+                            {conv.lastMessage?.text?.substring(0, 50) || conv.lastMessage?.content?.substring(0, 50)}
                           </Typography>
-                          {conv.unreadCount > 0 && (
-                            <Badge badgeContent={conv.unreadCount} color="error" />
-                          )}
-                        </Box>
-                      }
-                      secondary={conv.lastMessage?.text?.substring(0, 50) || conv.lastMessage?.content?.substring(0, 50)}
-                    />
-                  </ListItem>
-                  {idx < filtered.length - 1 && <Divider />}
-                </React.Fragment>
-              ))
+                        }
+                      />
+                    </ListItem>
+                    {idx < filtered.length - 1 && <Divider />}
+                  </React.Fragment>
+                );
+              })
             )}
           </List>
         </Card>

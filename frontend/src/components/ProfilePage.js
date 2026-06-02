@@ -38,6 +38,7 @@ import {
 // Import komponen Artist Dashboard
 import ArtistDashboardTab from './artist/ArtistDashboardTab';
 import ShopManager from './artist/ShopManager';
+import { updateUser, getCurrentUser } from '../services/userService';
 
 const formatJoinedDate = (dateString) => {
   if (!dateString) return 'MAY 2026';
@@ -145,16 +146,12 @@ function ProfilePage({ user, setUser }) {
     setModalData({ ...modalData, links: updatedLinks });
   };
 
-  const handleSave = () => {
-    setFormData({ ...modalData });
-    setOpenEditModal(false);
-    if (setUser && user) {
-      const updatedUser = { ...user, ...modalData };
-      setUser(updatedUser);
-      localStorage.setItem('user', JSON.stringify(updatedUser));
-      window.dispatchEvent(new CustomEvent('userUpdated', { detail: updatedUser }));
-    }
-  };
+const handleSave = () => {
+  const updatedUser = { ...user, ...modalData };
+  updateUser(updatedUser);  // ← Gunakan fungsi dari userService
+  setUser(updatedUser);
+  setOpenEditModal(false);
+};
 
   const handleGoToCreatorMode = () => {
     setShowCreatorMode(true);

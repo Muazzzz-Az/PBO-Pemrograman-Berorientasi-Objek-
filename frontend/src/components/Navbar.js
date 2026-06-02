@@ -1,7 +1,6 @@
-// src/components/Navbar.js - Enhanced Version with Per-User Notifications
+// src/components/Navbar.js
 import React, { useState, useEffect } from 'react';
 import { Link, useNavigate, useLocation } from 'react-router-dom';
-import UserNotifications from './UserNotifications';
 import {
   AppBar,
   Toolbar,
@@ -43,7 +42,7 @@ import DialogTitle from '@mui/material/DialogTitle';
 import DialogContent from '@mui/material/DialogContent';
 import DialogActions from '@mui/material/DialogActions';
 
-// Styled Components dengan animasi lebih halus
+// Styled Components
 const StyledAppBar = styled(AppBar)(({ theme }) => ({
   background: 'rgba(255, 255, 255, 0.98)',
   backdropFilter: 'blur(10px)',
@@ -173,6 +172,17 @@ const MenuItemStyled = styled(MenuItem)(({ theme }) => ({
   },
 }));
 
+// Fungsi helper untuk cek role artist (case insensitive)
+const isArtist = (user) => {
+  if (!user) return false;
+  const role = user.role?.toLowerCase();
+  return role === 'artist';
+};
+
+const isVerifiedArtist = (user) => {
+  return isArtist(user) && user?.isVerified === true;
+};
+
 function Navbar({ isAuthenticated, user, setIsAuthenticated, setUser }) {
   const [mobileOpen, setMobileOpen] = useState(false);
   const [anchorEl, setAnchorEl] = useState(null);
@@ -224,7 +234,7 @@ function Navbar({ isAuthenticated, user, setIsAuthenticated, setUser }) {
     return () => window.removeEventListener('categoryClicked', handleCategoryEvent);
   }, []);
 
-  // 🔥 PERBAIKAN: Load notifications from localStorage PER USER
+  // Load notifications from localStorage PER USER
   useEffect(() => {
     const loadNotifications = () => {
       const currentUser = JSON.parse(localStorage.getItem('user'));
@@ -258,14 +268,12 @@ function Navbar({ isAuthenticated, user, setIsAuthenticated, setUser }) {
   useEffect(() => {
     const checkArtistNotification = () => {
       const notifData = localStorage.getItem('artist_notification');
-      
+
       if (notifData && isAuthenticated) {
         const currentUser = JSON.parse(localStorage.getItem('user'));
-        
-        // FIX 1: PROTEKSI ROLE (O(1) Check)
-        // Cegah Admin "mencuri" dan membaca notifikasi milik calon Artist
-        if (currentUser && currentUser.role === 'ADMIN') {
-            return; // Hentikan eksekusi, biarkan data di localStorage untuk Artist
+
+        if (currentUser && currentUser.role?.toLowerCase() === 'admin') {
+          return;
         }
 
         if (currentUser) {
@@ -282,15 +290,13 @@ function Navbar({ isAuthenticated, user, setIsAuthenticated, setUser }) {
               timestamp: new Date().toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit' })
             };
             const updatedNotifs = [newNotification, ...existingNotifs];
-            
-            // Simpan ke inbox privat user
+
             localStorage.setItem(NOTIF_KEY, JSON.stringify(updatedNotifs));
             setNotifications(updatedNotifs);
             setUnreadCount(prev => prev + 1);
           }
         }
-        
-        // Hanya hapus trigger global JIKA yang sedang login bukan Admin
+
         localStorage.removeItem('artist_notification');
       }
     };
@@ -321,7 +327,6 @@ function Navbar({ isAuthenticated, user, setIsAuthenticated, setUser }) {
   const handleNotifOpen = (event) => setAnchorElNotif(event.currentTarget);
   const handleNotifClose = () => setAnchorElNotif(null);
 
-  // 🔥 PERBAIKAN: Mark as read with per-user key
   const handleMarkAsRead = (notifId) => {
     const currentUser = JSON.parse(localStorage.getItem('user'));
     if (!currentUser) return;
@@ -336,7 +341,6 @@ function Navbar({ isAuthenticated, user, setIsAuthenticated, setUser }) {
     setUnreadCount(unread);
   };
 
-  // 🔥 PERBAIKAN: Mark all as read with per-user key
   const handleMarkAllAsRead = () => {
     const currentUser = JSON.parse(localStorage.getItem('user'));
     if (!currentUser) return;
@@ -348,7 +352,6 @@ function Navbar({ isAuthenticated, user, setIsAuthenticated, setUser }) {
     setUnreadCount(0);
   };
 
-  // 🔥 PERBAIKAN: Clear notification with per-user key
   const handleClearNotification = (notifId) => {
     const currentUser = JSON.parse(localStorage.getItem('user'));
     if (!currentUser) return;
@@ -413,7 +416,7 @@ function Navbar({ isAuthenticated, user, setIsAuthenticated, setUser }) {
           {!isMobile ? (
             <Box sx={{ display: 'flex', gap: 1.5, alignItems: 'center' }}>
 
-              {/* Bell Icon with Animation */}
+              {/* Bell Icon */}
               {isAuthenticated && (
                 <Tooltip title="Notifications" arrow placement="bottom">
                   <IconButtonStyled onClick={handleNotifOpen}>
@@ -433,7 +436,7 @@ function Navbar({ isAuthenticated, user, setIsAuthenticated, setUser }) {
                 </Tooltip>
               )}
 
-              {/* Notifications Menu - Enhanced */}
+              {/* Notifications Menu */}
               <Menu
                 anchorEl={anchorElNotif}
                 open={Boolean(anchorElNotif)}
@@ -441,26 +444,14 @@ function Navbar({ isAuthenticated, user, setIsAuthenticated, setUser }) {
                 TransitionComponent={Fade}
                 transformOrigin={{ horizontal: 'right', vertical: 'top' }}
                 anchorOrigin={{ horizontal: 'right', vertical: 'bottom' }}
-                PaperProps={{
-                  component: MenuPaper,
-                }}
+                PaperProps={{ component: MenuPaper }}
               >
                 <Box px={2.5} py={2} display="flex" justifyContent="space-between" alignItems="center" borderBottom="1px solid rgba(74, 159, 191, 0.1)">
                   <Typography variant="subtitle1" fontWeight={800} color="#1A6B8A" letterSpacing="-0.3px">
                     Notifications
                   </Typography>
                   {notifications.length > 0 && unreadCount > 0 && (
-                    <Button
-                      size="small"
-                      onClick={handleMarkAllAsRead}
-                      sx={{
-                        textTransform: 'none',
-                        fontSize: '0.7rem',
-                        color: '#4A9FBF',
-                        fontWeight: 600,
-                        '&:hover': { backgroundColor: 'transparent', textDecoration: 'underline' }
-                      }}
-                    >
+                    <Button size="small" onClick={handleMarkAllAsRead} sx={{ textTransform: 'none', fontSize: '0.7rem', color: '#4A9FBF', fontWeight: 600 }}>
                       Mark all read
                     </Button>
                   )}
@@ -487,7 +478,6 @@ function Navbar({ isAuthenticated, user, setIsAuthenticated, setUser }) {
                           borderBottom: index !== notifications.length - 1 ? '1px solid rgba(74, 159, 191, 0.05)' : 'none',
                         }}
                       >
-                        {/* Bagian dalam MenuItem (Box, Typography, dll) milik temanmu tetap di sini */}
                         <Box sx={{ flex: 1 }}>
                           <Typography variant="body2" sx={{ fontWeight: notif.isRead ? 500 : 700, color: '#2C3E50', mb: 0.5 }}>
                             {notif.type === 'ARTIST_APPROVAL' ? '🎉 Artist Verification' : '📢 Notification'}
@@ -512,12 +502,12 @@ function Navbar({ isAuthenticated, user, setIsAuthenticated, setUser }) {
                 )}
               </Menu>
 
-              {/* Artist Button - Enhanced */}
+              {/* Artist Button */}
               <ArtistButton component={Link} to="/for-artists">
                 ✨ I'm an artist+
               </ArtistButton>
 
-              {/* Profile Dropdown - Enhanced */}
+              {/* Profile Dropdown */}
               <Box>
                 <Tooltip title={isAuthenticated ? "Account" : "Login"} arrow placement="bottom">
                   <IconButtonStyled onClick={handleMenuOpen}>
@@ -548,9 +538,7 @@ function Navbar({ isAuthenticated, user, setIsAuthenticated, setUser }) {
                   TransitionComponent={Fade}
                   transformOrigin={{ horizontal: 'right', vertical: 'top' }}
                   anchorOrigin={{ horizontal: 'right', vertical: 'bottom' }}
-                  PaperProps={{
-                    component: MenuPaper,
-                  }}
+                  PaperProps={{ component: MenuPaper }}
                 >
                   {isAuthenticated ? (
                     <Box>
@@ -567,20 +555,20 @@ function Navbar({ isAuthenticated, user, setIsAuthenticated, setUser }) {
                         Cart {cartCount > 0 && `(${cartCount})`}
                       </MenuItemStyled>
 
-                      <MenuItem component={Link} to="/my-purchases" onClick={handleMenuClose}>
+                      <MenuItemStyled component={Link} to="/my-purchases" onClick={handleMenuClose}>
                         My Purchases
-                      </MenuItem>
+                      </MenuItemStyled>
 
-                      {/* 🔥 PERBAIKAN 1: Sembunyikan My Commissions dari User Biasa */}
-                      {user?.role === 'ARTIST' && (
+                      {/* 🔥 MY COMMISSIONS - untuk artist (case insensitive) */}
+                      {isArtist(user) && (
                         <MenuItemStyled component={Link} to="/my-commissions" onClick={handleMenuClose}>
                           <BrushIcon sx={{ fontSize: 20, color: '#4A9FBF' }} />
                           My Commissions
                         </MenuItemStyled>
                       )}
 
-                      {/* 🔥 PERBAIKAN 2: Creator Dashboard hanya untuk akun yang beneran ARTIST dan Verified */}
-                      {user?.role === 'ARTIST' && user?.isVerified === true && (
+                      {/* 🔥 CREATOR DASHBOARD - untuk artist yang sudah terverifikasi */}
+                      {isVerifiedArtist(user) && (
                         <MenuItemStyled component={Link} to="/profile?tab=creator" onClick={handleMenuClose}>
                           <DashboardIcon sx={{ fontSize: 20, color: '#4A9FBF' }} />
                           Creator Dashboard
@@ -608,7 +596,7 @@ function Navbar({ isAuthenticated, user, setIsAuthenticated, setUser }) {
               </Box>
             </Box>
           ) : (
-            /* Mobile Menu - Enhanced */
+            /* Mobile Menu */
             <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
               {isAuthenticated && (
                 <IconButtonStyled onClick={handleNotifOpen}>
@@ -624,7 +612,7 @@ function Navbar({ isAuthenticated, user, setIsAuthenticated, setUser }) {
           )}
         </Toolbar>
 
-        {/* Category Sub-navbar - Enhanced */}
+        {/* Category Sub-navbar */}
         {!isMobile && showCategories && (
           <Box sx={{
             display: 'flex',
@@ -634,16 +622,9 @@ function Navbar({ isAuthenticated, user, setIsAuthenticated, setUser }) {
             borderTop: '1px solid rgba(74, 159, 191, 0.06)',
             overflowX: 'auto',
             justifyContent: 'flex-start',
-            '&::-webkit-scrollbar': {
-              height: '4px',
-            },
-            '&::-webkit-scrollbar-track': {
-              backgroundColor: 'transparent',
-            },
-            '&::-webkit-scrollbar-thumb': {
-              backgroundColor: '#CBD5E1',
-              borderRadius: '10px',
-            },
+            '&::-webkit-scrollbar': { height: '4px' },
+            '&::-webkit-scrollbar-track': { backgroundColor: 'transparent' },
+            '&::-webkit-scrollbar-thumb': { backgroundColor: '#CBD5E1', borderRadius: '10px' },
           }}>
             {categories.map((cat) => (
               <CategoryButton key={cat.label} component={Link} to={cat.path}>
@@ -654,7 +635,7 @@ function Navbar({ isAuthenticated, user, setIsAuthenticated, setUser }) {
         )}
       </Container>
 
-      {/* Mobile Drawer - Enhanced */}
+      {/* Mobile Drawer */}
       <Drawer anchor="right" open={mobileOpen} onClose={() => setMobileOpen(false)}>
         <Box sx={{ width: 300, p: 2.5, bgcolor: '#FFFFFF', height: '100%' }}>
           <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 3 }}>
@@ -682,12 +663,7 @@ function Navbar({ isAuthenticated, user, setIsAuthenticated, setUser }) {
                   '&:hover': { backgroundColor: alpha('#4A9FBF', 0.08), color: '#4A9FBF' }
                 }}
               >
-                <ListItemText
-                  primary={item.label}
-                  sx={{
-                    primaryTypographyProps: { fontWeight: 600, fontSize: '1rem' }
-                  }}
-                />
+                <ListItemText primary={item.label} sx={{ primaryTypographyProps: { fontWeight: 600, fontSize: '1rem' } }} />
               </ListItem>
             ))}
 
@@ -715,12 +691,7 @@ function Navbar({ isAuthenticated, user, setIsAuthenticated, setUser }) {
                       '&:hover': { backgroundColor: alpha('#4A9FBF', 0.05), color: '#4A9FBF' }
                     }}
                   >
-                    <ListItemText
-                      primary={cat.label}
-                      sx={{
-                        primaryTypographyProps: { fontSize: '0.9rem', fontWeight: 500 }
-                      }}
-                    />
+                    <ListItemText primary={cat.label} sx={{ primaryTypographyProps: { fontSize: '0.9rem', fontWeight: 500 } }} />
                   </ListItem>
                 ))}
               </>
@@ -740,10 +711,7 @@ function Navbar({ isAuthenticated, user, setIsAuthenticated, setUser }) {
                   '&:hover': { backgroundColor: alpha('#E74C3C', 0.08) }
                 }}
               >
-                <ListItemText
-                  primary="Log out"
-                  sx={{ primaryTypographyProps: { fontWeight: 700 } }}
-                />
+                <ListItemText primary="Log out" sx={{ primaryTypographyProps: { fontWeight: 700 } }} />
               </ListItem>
             )}
           </List>
@@ -753,21 +721,13 @@ function Navbar({ isAuthenticated, user, setIsAuthenticated, setUser }) {
       {/* CSS Animation */}
       <style jsx>{`
         @keyframes pulse {
-          0%, 100% {
-            transform: scale(1);
-          }
-          50% {
-            transform: scale(1.1);
-          }
+          0%, 100% { transform: scale(1); }
+          50% { transform: scale(1.1); }
         }
       `}</style>
 
       {/* POPUP LOGIN ULANG */}
-      <Dialog
-        open={openReLogin}
-        onClose={() => setOpenReLogin(false)}
-        PaperProps={{ sx: { borderRadius: '20px', p: 1 } }}
-      >
+      <Dialog open={openReLogin} onClose={() => setOpenReLogin(false)} PaperProps={{ sx: { borderRadius: '20px', p: 1 } }}>
         <DialogTitle sx={{ fontWeight: 800, color: '#1A6B8A', textAlign: 'center' }}>
           Congratulations on becoming an artist! 🎨
         </DialogTitle>
@@ -777,11 +737,7 @@ function Navbar({ isAuthenticated, user, setIsAuthenticated, setUser }) {
           </Typography>
         </DialogContent>
         <DialogActions sx={{ justifyContent: 'center', pb: 3 }}>
-          <Button
-            variant="contained"
-            onClick={handleLogout}
-            sx={{ borderRadius: '30px', px: 4, bgcolor: '#4A9FBF' }}
-          >
+          <Button variant="contained" onClick={handleLogout} sx={{ borderRadius: '30px', px: 4, bgcolor: '#4A9FBF' }}>
             Re-Login Now
           </Button>
         </DialogActions>
