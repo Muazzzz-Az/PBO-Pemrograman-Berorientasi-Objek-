@@ -124,13 +124,18 @@ const categoryMapping = {
 // ==========================================
 // PRODUCT MODAL COMPONENT
 // ==========================================
-const ProductModal = ({ product, onClose }) => {
+const ProductModal = ({ product, onClose, onNavigate }) => {
   useEffect(() => {
     document.body.style.overflow = 'hidden';
     return () => { document.body.style.overflow = 'unset'; };
   }, []);
 
   if (!product) return null;
+
+  const handleViewArtist = () => {
+    onClose();
+    onNavigate(`/artist/${product.artistUsername || product.artistId || product.id}`);
+  };
 
   return (
     <div style={{
@@ -220,12 +225,14 @@ const ProductModal = ({ product, onClose }) => {
           </div>
 
           <div style={{ marginTop: 'auto', display: 'flex', flexDirection: 'column', gap: '10px' }}>
-            <button style={{
-              padding: '18px', borderRadius: '14px', border: 'none',
-              backgroundColor: '#4A9FBF', color: '#FFFFFF', fontWeight: 700,
-              fontSize: '1rem', cursor: 'pointer'
-            }}>
-              Accept terms to start request
+            <button
+              onClick={handleViewArtist}
+              style={{
+                padding: '18px', borderRadius: '14px', border: 'none',
+                backgroundColor: '#4A9FBF', color: '#FFFFFF', fontWeight: 700,
+                fontSize: '1rem', cursor: 'pointer'
+              }}>
+              View Artist Profile & Request
             </button>
             <div style={{ color: '#2ECC71', fontSize: '0.9rem', textAlign: 'center', fontWeight: 700 }}>
               {product.slotsLeft > 0 ? `${product.slotsLeft} slots left!` : 'Commission closed'}
@@ -503,6 +510,7 @@ function CategoryPage() {
         <ProductModal
           product={selectedProduct}
           onClose={() => setSelectedProduct(null)}
+          onNavigate={navigate}
         />
       )}
     </div>

@@ -32,17 +32,13 @@ export const cartService = {
   getCart: () => getItem(STORAGE_KEYS.CART),
 
   addToCart: (commission, userId) => {
-    // PROTEKSI: Pastikan commission dan userId ada
     if (!commission || !userId) {
-        console.error("Gagal masuk keranjang: Data komisi atau User ID kosong");
-        return null;
+      console.error("Gagal masuk keranjang: Data komisi atau User ID kosong");
+      return null;
     }
 
     const cart = getItem(STORAGE_KEYS.CART);
-    
-    // FIX 1: Tangkap ID commission secara universal (bisa 'id' atau 'commissionId')
     const targetCommissionId = commission.id || commission.commissionId || Date.now();
-
     const existingItem = cart.find(item => item.commissionId === targetCommissionId && item.userId === userId);
 
     if (existingItem) {
@@ -50,22 +46,29 @@ export const cartService = {
       setItem(STORAGE_KEYS.CART, cart);
       return existingItem;
     } else {
-      // FIX 2: Normalisasi payload agar CartPage.js tidak bingung
-      // Jika Backend melempar 'price', tangkap. Jika melempar 'priceFrom', tangkap.
       const normalizedPrice = commission.price || commission.priceFrom || 0;
-      
+
+      // JANGAN simpan base64 image di cart — terlalu besar, bikin localStorage penuh
+      // Simpan URL saja atau string pendek
+      let coverImage = commission.coverImage || '';
+      if (coverImage.startsWith('data:image')) {
+        // Kalau base64, ganti dengan placeholder
+        coverImage = 'https://images.unsplash.com/photo-1618005182384-a83a8bd57fbe?w=200';
+      }
+
       const newItem = {
         id: Date.now(),
         commissionId: targetCommissionId,
+        artistId: commission.artistId,
         userId: userId,
         title: commission.title || 'Untitled Commission',
-        price: Number(normalizedPrice), // Pastikan selalu angka agar bisa dihitung (total * qty)
-        coverImage: commission.coverImage || 'https://via.placeholder.com/150', // Gambar default jika null
+        price: Number(normalizedPrice),
+        coverImage: coverImage,
         artistName: commission.artistName || 'Unknown Artist',
         quantity: 1,
         addedAt: new Date().toISOString()
       };
-      
+
       cart.push(newItem);
       setItem(STORAGE_KEYS.CART, cart);
       return newItem;
